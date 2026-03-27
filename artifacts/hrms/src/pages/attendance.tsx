@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Clock, Calendar, CheckCircle2, XCircle, AlertCircle, Loader2, LogIn, LogOut } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,28 +9,33 @@ function useAttendanceData() {
   const [today, setToday] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const headers = () => ({
+  const headers = useCallback(() => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${localStorage.getItem("hrms_token")}`,
-  });
+  }), []);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [todayRes, histRes] = await Promise.all([
         fetch(`${BASE}/api/attendance/today`, { headers: headers() }),
         fetch(`${BASE}/api/attendance`, { headers: headers() }),
       ]);
+      if (!todayRes.ok || !histRes.ok) throw new Error("Failed to fetch attendance data");
       setToday(await todayRes.json());
       setHistory(await histRes.json());
-    } catch {}
+    } catch (err: any) {
+      setError(err.message || "Failed to load attendance data");
+    }
     setLoading(false);
-  };
+  }, [headers]);
 
-  useState(() => { fetchAll(); });
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  return { today, history, loading, refetch: fetchAll };
+  return { today, history, loading, error, refetch: fetchAll };
 }
 
 export default function Attendance() {
@@ -50,13 +55,16 @@ export default function Attendance() {
     Authorization: `Bearer ${localStorage.getItem("hrms_token")}`,
   });
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleCheckIn = async () => {
     if (!myEmployeeId) return;
     setCheckingIn(true);
+    setActionError(null);
     try {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
-      await fetch(`${BASE}/api/attendance`, {
+      const resp = await fetch(`${BASE}/api/attendance`, {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
@@ -66,24 +74,37 @@ export default function Attendance() {
           checkIn: timeStr,
         }),
       });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to check in");
+      }
       await refetch();
-    } catch {}
+    } catch (err: any) {
+      setActionError(err.message || "Check-in failed");
+    }
     setCheckingIn(false);
   };
 
   const handleCheckOut = async () => {
     if (!myTodayRecord) return;
     setCheckingOut(true);
+    setActionError(null);
     try {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
-      await fetch(`${BASE}/api/attendance/${myTodayRecord.id}`, {
+      const resp = await fetch(`${BASE}/api/attendance/${myTodayRecord.id}`, {
         method: "PUT",
         headers: headers(),
         body: JSON.stringify({ checkOut: timeStr }),
       });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to check out");
+      }
       await refetch();
-    } catch {}
+    } catch (err: any) {
+      setActionError(err.message || "Check-out failed");
+    }
     setCheckingOut(false);
   };
 
@@ -165,6 +186,9 @@ export default function Attendance() {
               </button>
             </div>
           </div>
+          {actionError && (
+            <p className="text-xs text-destructive mt-3 p-2 bg-destructive/10 rounded-lg">{actionError}</p>
+          )}
           {!myEmployeeId && (
             <p className="text-xs text-amber-600 mt-3">Your user account is not linked to an employee record. Ask an admin to link it.</p>
           )}

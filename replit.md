@@ -71,17 +71,29 @@ All routes prefixed with `/api/`
 - `POST /auth/login` — Login (no auth required)
 - `GET /auth/me` — Current user
 - `GET/POST /employees` — Employee CRUD
+- `PUT /employees/:id` — Update employee
+- `DELETE /employees/:id` — Delete employee
 - `GET/POST /departments` — Department CRUD
-- `GET/POST /attendance` — Attendance records
-- `GET /attendance/today` — Today's summary
+- `GET/POST /attendance` — Attendance records (POST creates check-in, checkIn/checkOut are HH:MM:SS time format)
+- `PUT /attendance/:id` — Update attendance (check-out, auto-calculates work hours)
+- `GET /attendance/today` — Today's summary with per-employee records
 - `GET/POST /leaves` — Leave requests
 - `PUT /leaves/:id/status` — Approve/reject leave
-- `GET/POST /payroll` — Payroll records
-- `GET /payroll/:id/payslip` — Payslip detail
+- `GET/POST /payroll` — Payroll records (POST runs payroll for month/year)
+- `GET /payroll/:id/payslip` — Payslip detail with earnings/deductions breakdown
 - `GET/POST /timesheets` — Timesheets
-- `PUT /timesheets/:id/status` — Approve timesheet
-- `GET/POST /performance/kpis` — KPI tracking
-- `GET/POST /performance/appraisals` — Appraisals
-- `GET /dashboard/stats` — Stats
-- `GET /dashboard/charts` — Chart data
+- `PUT /timesheets/:id/status` — Approve/reject timesheet
+- `GET/POST /performance/kpis` — KPI tracking with target/achieved/progress
+- `GET/POST /performance/appraisals` — Appraisals with multi-dimension ratings
+- `GET /dashboard/stats` — Stats (uses getLastDayOfMonth for correct date ranges)
+- `GET /dashboard/charts` — Chart data (attendance trend, dept distribution, payroll trend, leave types)
 - `GET/PUT /branding` — Branding settings
+
+## Frontend Architecture
+
+- Direct `fetch()` with Bearer token from `localStorage.getItem("hrms_token")` for API calls
+- Base URL: `import.meta.env.BASE_URL.replace(/\/$/, "")`
+- Reusable Modal component (`components/ui/Modal.tsx`) with animation, keyboard close, overlay dismiss
+- Role-based UI: admin/hr users see action buttons (Add, Edit, Delete, Approve/Reject)
+- `user.employeeId` links auth user to employee record for attendance check-in/out
+- Attendance uses PostgreSQL `time` type — always send HH:MM:SS format, never ISO datetime
