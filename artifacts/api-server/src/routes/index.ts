@@ -10,6 +10,11 @@ import timesheetsRouter from "./timesheets.js";
 import performanceRouter from "./performance.js";
 import dashboardRouter from "./dashboard.js";
 import brandingRouter from "./branding.js";
+import biometricsRouter from "./biometrics.js";
+import documentsRouter from "./documents.js";
+import holidaysRouter from "./holidays.js";
+import announcementsRouter from "./announcements.js";
+import policiesRouter from "./policies.js";
 
 const router: IRouter = Router();
 
@@ -24,5 +29,10 @@ router.use("/timesheets", timesheetsRouter);
 router.use("/performance", performanceRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/branding", brandingRouter);
+router.use("/biometrics", biometricsRouter);
+router.use("/documents", documentsRouter);
+router.use("/holidays", holidaysRouter);
+router.use("/announcements", announcementsRouter);
+router.use("/policies", policiesRouter);
 
 export default router;

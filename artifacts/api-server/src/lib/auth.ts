@@ -46,3 +46,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   (req as any).user = payload;
   next();
 }
+
+export function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !roles.includes(user.role)) {
+      res.status(403).json({ error: "Forbidden", message: "Insufficient permissions" });
+      return;
+    }
+    next();
+  };
+}

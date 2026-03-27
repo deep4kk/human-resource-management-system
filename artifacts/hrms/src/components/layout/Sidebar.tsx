@@ -1,15 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { 
-  LayoutDashboard, 
-  Users, 
-  CalendarDays, 
-  CalendarRange, 
-  Wallet, 
-  Clock, 
-  Target, 
-  Settings,
-  LogOut,
-  Sparkles
+  LayoutDashboard, Users, CalendarDays, CalendarRange, Wallet, Clock, Target, 
+  Settings, LogOut, Sparkles, FileText, Megaphone, CalendarHeart, Fingerprint,
+  Shield, X
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -23,49 +16,60 @@ const menuItems = [
   { path: "/payroll", label: "Payroll", icon: Wallet, roles: ["admin", "hr", "employee"] },
   { path: "/timesheets", label: "Timesheets", icon: Clock, roles: ["admin", "hr", "manager", "employee"] },
   { path: "/performance", label: "Performance", icon: Target, roles: ["admin", "hr", "manager", "employee"] },
+  { path: "/documents", label: "Documents", icon: FileText, roles: ["admin", "hr", "manager", "employee"] },
+  { path: "/holidays", label: "Holidays", icon: CalendarHeart, roles: ["admin", "hr", "manager", "employee"] },
+  { path: "/announcements", label: "Announcements", icon: Megaphone, roles: ["admin", "hr", "manager", "employee"] },
+  { path: "/policies", label: "Policies", icon: Shield, roles: ["admin", "hr", "manager", "employee"] },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const branding = useApplyBranding(); // Re-use hook to get branding data here if needed
+  const branding = useApplyBranding();
 
   const visibleItems = menuItems.filter(item => user?.role && item.roles.includes(user.role));
 
+  const handleNav = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <div className="w-64 h-screen bg-card border-r border-border/50 flex flex-col justify-between sticky top-0 shrink-0 shadow-lg shadow-black/5 z-20">
+    <div className="w-64 h-screen glass-sidebar flex flex-col justify-between shrink-0 z-20">
       <div>
-        <div className="h-20 flex items-center px-6 border-b border-border/50">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-border/30">
           {branding?.logoUrl ? (
-             <img src={branding.logoUrl} alt="Logo" className="h-8 max-w-[150px] object-contain" />
+             <img src={branding.logoUrl} alt="Logo" className="h-7 max-w-[140px] object-contain" />
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
-                <Sparkles className="w-5 h-5" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+                <Sparkles className="w-4 h-4" />
               </div>
-              <span className="font-display font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+              <span className="font-display font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
                 {branding?.companyName || "HRMS"}
               </span>
             </div>
           )}
+          <button onClick={onClose} className="md:hidden p-1.5 rounded-lg hover:bg-secondary text-muted-foreground">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         
-        <div className="p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-3">
-            Main Menu
+        <div className="p-3 overflow-y-auto max-h-[calc(100vh-180px)]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-3 px-3">
+            Menu
           </p>
-          <nav className="space-y-1.5">
+          <nav className="space-y-0.5">
             {visibleItems.map((item) => {
               const isActive = location === item.path || location.startsWith(`${item.path}/`);
               return (
-                <Link key={item.path} href={item.path} className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group font-medium",
+                <Link key={item.path} href={item.path} onClick={handleNav} className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group text-sm font-medium",
                   isActive 
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                 )}>
-                  <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary")} />
-                  {item.label}
+                  <item.icon className={cn("w-[18px] h-[18px] transition-transform group-hover:scale-110 shrink-0", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary")} />
+                  <span className="truncate">{item.label}</span>
                 </Link>
               );
             })}
@@ -73,23 +77,34 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-border/50">
-        {user?.role === "admin" && (
-          <Link href="/settings/branding" className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group font-medium mb-2",
-            location === "/settings/branding" 
-              ? "bg-primary/10 text-primary" 
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}>
-            <Settings className="w-5 h-5 transition-transform group-hover:rotate-45" />
-            Branding Settings
-          </Link>
+      <div className="p-3 border-t border-border/30">
+        {(user?.role === "admin" || user?.role === "hr") && (
+          <>
+            <Link href="/settings/biometrics" onClick={handleNav} className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group text-sm font-medium mb-0.5",
+              location === "/settings/biometrics"
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+            )}>
+              <Fingerprint className="w-[18px] h-[18px] transition-transform group-hover:scale-110" />
+              Biometrics
+            </Link>
+            <Link href="/settings/branding" onClick={handleNav} className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group text-sm font-medium mb-0.5",
+              location === "/settings/branding" 
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+            )}>
+              <Settings className="w-[18px] h-[18px] transition-transform group-hover:rotate-45" />
+              Branding
+            </Link>
+          </>
         )}
         <button 
-          onClick={() => logout()}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive group"
+          onClick={() => { logout(); handleNav(); }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive group"
         >
-          <LogOut className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+          <LogOut className="w-[18px] h-[18px] transition-transform group-hover:-translate-x-1" />
           Logout
         </button>
       </div>

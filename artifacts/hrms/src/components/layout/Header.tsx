@@ -1,8 +1,8 @@
-import { Bell, Moon, Sun, Search } from "lucide-react";
+import { Bell, Moon, Sun, Search, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
 
-export function Header() {
+export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { user } = useAuth();
   const [isDark, setIsDark] = useState(false);
 
@@ -22,44 +22,47 @@ export function Header() {
   };
 
   return (
-    <header className="h-20 bg-background/80 backdrop-blur-xl border-b border-border/50 px-8 flex items-center justify-between sticky top-0 z-10">
-      <div className="flex-1 flex items-center">
-        <div className="relative w-96 group">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+    <header className="h-14 md:h-16 glass-header px-4 md:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-10">
+      <div className="flex items-center gap-3 flex-1">
+        <button onClick={onMenuToggle} className="md:hidden p-2 rounded-xl hover:bg-secondary text-muted-foreground">
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="relative hidden sm:block w-full max-w-xs lg:max-w-sm group">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input 
             type="text" 
-            placeholder="Search employees, leaves, payroll..." 
-            className="w-full h-11 pl-10 pr-4 bg-secondary/50 border border-transparent rounded-2xl focus:outline-none focus:border-primary/30 focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all duration-300 placeholder:text-muted-foreground"
+            placeholder="Search..." 
+            className="w-full h-9 pl-9 pr-4 glass-input rounded-xl text-sm placeholder:text-muted-foreground/60 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
         <button 
           onClick={toggleTheme}
-          className="w-11 h-11 rounded-full flex items-center justify-center bg-secondary hover:bg-secondary/80 text-foreground transition-all hover:scale-105 active:scale-95"
+          className="w-9 h-9 rounded-xl flex items-center justify-center glass-btn bg-secondary/50 hover:bg-secondary text-foreground"
         >
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
         
-        <button className="relative w-11 h-11 rounded-full flex items-center justify-center bg-secondary hover:bg-secondary/80 text-foreground transition-all hover:scale-105 active:scale-95">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-background animate-pulse"></span>
+        <button className="relative w-9 h-9 rounded-xl flex items-center justify-center glass-btn bg-secondary/50 hover:bg-secondary text-foreground">
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-destructive rounded-full animate-pulse"></span>
         </button>
 
-        <div className="h-8 w-[1px] bg-border mx-2"></div>
+        <div className="h-6 w-px bg-border/50 mx-1 hidden md:block"></div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="text-right hidden md:block">
-            <p className="text-sm font-bold text-foreground leading-none">{user?.name}</p>
-            <p className="text-xs text-muted-foreground mt-1 capitalize">{user?.role}</p>
+            <p className="text-xs font-bold text-foreground leading-none">{user?.name}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 capitalize">{user?.role}</p>
           </div>
-          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-primary to-accent p-0.5 shadow-md">
-            <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden border-2 border-background">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-accent p-[2px] shadow-md">
+            <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center overflow-hidden">
               {user?.avatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="font-bold text-primary">{user?.name?.charAt(0)}</span>
+                <span className="font-bold text-xs text-primary">{user?.name?.charAt(0)}</span>
               )}
             </div>
           </div>

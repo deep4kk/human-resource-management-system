@@ -6,3 +6,4 @@ export * from "./payroll";
 export * from "./timesheets";
 export * from "./performance";
 export * from "./branding";
+export * from "./settings";

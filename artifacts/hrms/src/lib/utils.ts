@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(dateString: string | undefined | null) {
   if (!dateString) return "N/A";
   try {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -19,14 +19,14 @@ export function formatDate(dateString: string | undefined | null) {
 }
 
 export function formatCurrency(amount: number | undefined | null) {
-  if (amount == null) return "$0.00";
-  return new Intl.NumberFormat('en-US', {
+  if (amount == null) return "₹0.00";
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'INR',
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
-// Convert HEX to HSL format for Tailwind CSS variables
 export function hexToHslString(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;

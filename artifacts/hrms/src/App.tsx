@@ -1,6 +1,6 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import "@/lib/api-setup"; // Import fetch interceptor FIRST
+import "@/lib/api-setup";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useApplyBranding } from "@/hooks/use-branding";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -12,21 +12,24 @@ import Leaves from "@/pages/leaves";
 import Payroll from "@/pages/payroll";
 import Timesheets from "@/pages/timesheets";
 import Performance from "@/pages/performance";
+import Documents from "@/pages/documents";
+import Holidays from "@/pages/holidays";
+import Announcements from "@/pages/announcements";
+import Policies from "@/pages/policies";
 import BrandingSettings from "@/pages/settings/branding";
+import BiometricsSettings from "@/pages/settings/biometrics";
 
 const queryClient = new QueryClient();
 
-// A component to apply branding to the app root
 function BrandingWrapper({ children }: { children: React.ReactNode }) {
   useApplyBranding();
   return <>{children}</>;
 }
 
-// Protected Route wrapper
 const ProtectedRoute = ({ component: Component }: { component: any }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   
   return (
@@ -41,7 +44,6 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       
-      {/* Protected Routes */}
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/employees" component={() => <ProtectedRoute component={Employees} />} />
@@ -50,7 +52,12 @@ function Router() {
       <Route path="/payroll" component={() => <ProtectedRoute component={Payroll} />} />
       <Route path="/timesheets" component={() => <ProtectedRoute component={Timesheets} />} />
       <Route path="/performance" component={() => <ProtectedRoute component={Performance} />} />
+      <Route path="/documents" component={() => <ProtectedRoute component={Documents} />} />
+      <Route path="/holidays" component={() => <ProtectedRoute component={Holidays} />} />
+      <Route path="/announcements" component={() => <ProtectedRoute component={Announcements} />} />
+      <Route path="/policies" component={() => <ProtectedRoute component={Policies} />} />
       <Route path="/settings/branding" component={() => <ProtectedRoute component={BrandingSettings} />} />
+      <Route path="/settings/biometrics" component={() => <ProtectedRoute component={BiometricsSettings} />} />
       
       <Route path="*">
         {() => (
