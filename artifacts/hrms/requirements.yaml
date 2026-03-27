@@ -1,0 +1,18 @@
+packages:
+  "recharts": "Required for dashboard analytics charts"
+  "framer-motion": "Required for page transitions and micro-interactions"
+  "date-fns": "Required for human-readable date formatting across modules"
+  "react-hook-form": "Required for complex form state management"
+  "@hookform/resolvers": "Required for Zod validation integration with forms"
+
+images:
+  - path: "artifacts/hrms/public/images/auth-bg.png"
+    description: "Abstract premium deep blue and amber gold gradient background with soft corporate geometric shapes, professional, modern SaaS feel"
+    aspect_ratio: "16:9"
+  - path: "artifacts/hrms/public/images/logo.png"
+    description: "Minimalist modern tech company logo mark for Toyo Kambocha, incorporating abstract geometric shapes in deep blue and gold on transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - Setting up a window.fetch interceptor to automatically attach the localStorage JWT token to all /api/ requests since we cannot modify the generated customFetch directly.
+  - Branding settings fetched from /api/branding will inject CSS variables dynamically to theme the app.
