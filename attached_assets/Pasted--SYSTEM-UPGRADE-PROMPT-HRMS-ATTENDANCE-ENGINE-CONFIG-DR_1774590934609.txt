@@ -1,0 +1,307 @@
+**SYSTEM UPGRADE PROMPT — HRMS ATTENDANCE ENGINE (CONFIG-DRIVEN + MODULAR)**
+
+We already have an existing HRMS application with modules:
+Dashboard, Employees, Attendance, Leaves, Payroll, Timesheets, Performance, Documents, Holidays, Announcements, Policies.
+
+Now we want to UPGRADE the Attendance module into a **fully configurable, rule-based, and feature-toggle-driven system**.
+
+---
+
+## 🎯 OBJECTIVE
+
+Replace all hardcoded attendance logic with:
+
+1. Configurable rules (admin-controlled)
+2. Feature toggles (enable/disable modules dynamically)
+3. Modular processing engine (plug-and-play architecture)
+
+---
+
+## 🧠 CORE REQUIREMENTS
+
+### ❌ REMOVE:
+
+* Any hardcoded logic like:
+
+  * Fixed late time
+  * Fixed working hours
+  * Fixed penalties
+
+### ✅ ADD:
+
+* Settings-driven rule engine
+* Feature flag system
+* Modular attendance processing pipeline
+
+---
+
+## ⚙️ DATABASE CHANGES
+
+### 1. Create `attendance_settings` collection
+
+Structure:
+
+```json
+{
+  "company_id": "string",
+
+  "late_rule": {
+    "enabled": true,
+    "late_after_time": "10:15",
+    "grace_minutes": 10,
+    "allowed_lates": 3,
+    "penalty_type": "half_day", 
+    "penalty_value": 0.5
+  },
+
+  "working_hours_rule": {
+    "enabled": true,
+    "full_day_hours": 9,
+    "half_day_threshold": 4.5,
+    "absent_threshold": 2
+  },
+
+  "shift_rule": {
+    "enabled": true,
+    "shift_type": "fixed",
+    "start_time": "09:30",
+    "end_time": "18:30",
+    "night_shift": false
+  },
+
+  "geo_fencing": {
+    "enabled": false,
+    "allowed_radius_meters": 200
+  },
+
+  "face_recognition": {
+    "enabled": false
+  },
+
+  "auto_regularization": {
+    "enabled": true,
+    "auto_approve_below_minutes": 30
+  },
+
+  "notifications": {
+    "whatsapp_enabled": false,
+    "email_enabled": true
+  }
+}
+```
+
+---
+
+### 2. Create `feature_flags` collection
+
+```json
+{
+  "geo_fencing": false,
+  "face_recognition": false,
+  "whatsapp_notifications": false,
+  "email_notifications": true
+}
+```
+
+---
+
+## 🔄 ATTENDANCE ENGINE (IMPORTANT)
+
+Refactor attendance processing into a pipeline:
+
+```js
+function processAttendance(attendance, company_id) {
+  const settings = getAttendanceSettings(company_id);
+  const flags = getFeatureFlags(company_id);
+
+  if (settings.shift_rule.enabled) applyShiftLogic(attendance, settings);
+  if (settings.late_rule.enabled) applyLateLogic(attendance, settings);
+  if (settings.working_hours_rule.enabled) applyWorkingHours(attendance, settings);
+
+  if (flags.geo_fencing && settings.geo_fencing.enabled) {
+    validateGeoLocation(attendance);
+  }
+
+  if (flags.face_recognition && settings.face_recognition.enabled) {
+    verifyFace(attendance);
+  }
+
+  if (settings.auto_regularization.enabled) {
+    handleRegularization(attendance, settings);
+  }
+
+  triggerNotifications(attendance, settings, flags);
+
+  return attendance;
+}
+```
+
+---
+
+## ⏱️ LATE RULE ENGINE
+
+```js
+function applyLateLogic(attendance, settings) {
+  const lateAfter = settings.late_rule.late_after_time;
+  const grace = settings.late_rule.grace_minutes;
+
+  if (attendance.checkInTime > addMinutes(lateAfter, grace)) {
+    attendance.isLate = true;
+    attendance.lateCount += 1;
+  }
+
+  if (attendance.lateCount > settings.late_rule.allowed_lates) {
+    applyPenalty(attendance, settings.late_rule);
+  }
+}
+```
+
+---
+
+## ⏳ WORKING HOURS LOGIC
+
+```js
+function applyWorkingHours(attendance, settings) {
+  const hours = calculateWorkHours(attendance);
+
+  if (hours < settings.working_hours_rule.absent_threshold) {
+    attendance.status = "Absent";
+  } else if (hours < settings.working_hours_rule.half_day_threshold) {
+    attendance.status = "Half Day";
+  } else {
+    attendance.status = "Present";
+  }
+}
+```
+
+---
+
+## 🌙 NIGHT SHIFT SUPPORT
+
+```js
+if (settings.shift_rule.night_shift) {
+  if (attendance.checkOut < attendance.checkIn) {
+    attendance.checkOut = addNextDay(attendance.checkOut);
+  }
+}
+```
+
+---
+
+## 🔁 AUTO REGULARIZATION
+
+```js
+function handleRegularization(attendance, settings) {
+  if (attendance.lateMinutes < settings.auto_regularization.auto_approve_below_minutes) {
+    attendance.status = "Auto Approved";
+  } else {
+    attendance.status = "Pending Approval";
+  }
+}
+```
+
+---
+
+## 📲 NOTIFICATIONS MODULE
+
+### WhatsApp (only if enabled)
+
+* Use WhatsApp Cloud API
+
+```js
+if (flags.whatsapp_notifications && settings.notifications.whatsapp_enabled) {
+  sendWhatsApp(attendance.employeePhone, message);
+}
+```
+
+---
+
+### Email via Gmail SMTP (App Password)
+
+```js
+if (flags.email_notifications && settings.notifications.email_enabled) {
+  sendEmail({
+    smtp: "gmail",
+    user: "your_email@gmail.com",
+    pass: "app_password"
+  });
+}
+```
+
+---
+
+## 🎛️ ADMIN SETTINGS UI (CRITICAL)
+
+Create a Settings Panel:
+
+### Toggles:
+
+* Enable Late Rule
+* Enable Working Hours Rule
+* Enable Geo-Fencing
+* Enable Face Recognition
+* Enable WhatsApp Notifications
+* Enable Email Notifications
+
+### Editable Fields:
+
+* Late After Time
+* Grace Minutes
+* Allowed Lates
+* Work Hour Thresholds
+* Geo Radius
+
+👉 UI should dynamically hide/show fields based on toggles.
+
+---
+
+## 🧠 FRONTEND CHANGES
+
+* Hide features if disabled (based on feature_flags)
+* Show validation errors in real-time
+* Add attendance logs with rule explanations:
+
+  * “Marked Half Day due to < 4.5 hours”
+  * “Late penalty applied (Exceeded 3 lates)”
+
+---
+
+## 📊 LOGGING (VERY IMPORTANT)
+
+Create `attendance_logs`:
+
+```json
+{
+  "employee_id": "",
+  "date": "",
+  "events": [
+    "Late detected",
+    "Penalty applied",
+    "Auto regularized"
+  ]
+}
+```
+
+---
+
+## 🚀 FINAL EXPECTED OUTCOME
+
+* Fully dynamic attendance system
+* No hardcoded rules
+* Admin-controlled behavior
+* Scalable for multiple companies
+* Easy to extend in future
+
+---
+
+## ⚠️ IMPORTANT RULE
+
+Every feature must:
+
+* Work ONLY if enabled in settings
+* Be completely invisible if disabled
+* Not affect performance when off
+
+---
+
+Upgrade the existing Attendance module accordingly without breaking current functionality.

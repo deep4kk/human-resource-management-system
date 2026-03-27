@@ -18,6 +18,7 @@ import Announcements from "@/pages/announcements";
 import Policies from "@/pages/policies";
 import BrandingSettings from "@/pages/settings/branding";
 import BiometricsSettings from "@/pages/settings/biometrics";
+import AttendanceRulesSettings from "@/pages/settings/attendance-rules";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/policies" component={() => <ProtectedRoute component={Policies} />} />
       <Route path="/settings/branding" component={() => <ProtectedRoute component={BrandingSettings} />} />
       <Route path="/settings/biometrics" component={() => <ProtectedRoute component={BiometricsSettings} />} />
+      <Route path="/settings/attendance-rules" component={() => <ProtectedRoute component={AttendanceRulesSettings} />} />
       
       <Route path="*">
         {() => (

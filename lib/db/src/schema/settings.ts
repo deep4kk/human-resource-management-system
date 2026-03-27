@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, numeric, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, numeric, date, time, jsonb } from "drizzle-orm/pg-core";
 
 export const biometricSettingsTable = pgTable("biometric_settings", {
   id: serial("id").primaryKey(),
@@ -57,6 +57,48 @@ export const announcementsTable = pgTable("announcements", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const attendanceSettingsTable = pgTable("attendance_settings", {
+  id: serial("id").primaryKey(),
+  lateRuleEnabled: boolean("late_rule_enabled").notNull().default(true),
+  lateAfterTime: time("late_after_time").notNull().default("10:15:00"),
+  graceMinutes: integer("grace_minutes").notNull().default(10),
+  allowedLates: integer("allowed_lates").notNull().default(3),
+  penaltyType: text("penalty_type").notNull().default("half_day"),
+  penaltyValue: numeric("penalty_value", { precision: 3, scale: 1 }).notNull().default("0.5"),
+
+  workingHoursEnabled: boolean("working_hours_enabled").notNull().default(true),
+  fullDayHours: numeric("full_day_hours", { precision: 4, scale: 1 }).notNull().default("9"),
+  halfDayThreshold: numeric("half_day_threshold", { precision: 4, scale: 1 }).notNull().default("4.5"),
+  absentThreshold: numeric("absent_threshold", { precision: 4, scale: 1 }).notNull().default("2"),
+
+  shiftEnabled: boolean("shift_enabled").notNull().default(true),
+  shiftStartTime: time("shift_start_time").notNull().default("09:30:00"),
+  shiftEndTime: time("shift_end_time").notNull().default("18:30:00"),
+
+  autoRegularizationEnabled: boolean("auto_regularization_enabled").notNull().default(true),
+  autoApproveBelowMinutes: integer("auto_approve_below_minutes").notNull().default(30),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const featureFlagsTable = pgTable("feature_flags", {
+  id: serial("id").primaryKey(),
+  flagKey: text("flag_key").notNull().unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const attendanceLogsTable = pgTable("attendance_logs", {
+  id: serial("id").primaryKey(),
+  attendanceId: integer("attendance_id").notNull(),
+  employeeId: integer("employee_id").notNull(),
+  date: date("date").notNull(),
+  events: jsonb("events").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const companyPoliciesTable = pgTable("company_policies", {

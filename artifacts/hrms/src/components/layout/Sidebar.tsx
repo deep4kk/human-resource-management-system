@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, Users, CalendarDays, CalendarRange, Wallet, Clock, Target, 
   Settings, LogOut, Sparkles, FileText, Megaphone, CalendarHeart, Fingerprint,
-  Shield, X
+  Shield, X, Cog
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -80,6 +80,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="p-3 border-t border-border/30">
         {(user?.role === "admin" || user?.role === "hr") && (
           <>
+            <Link href="/settings/attendance-rules" onClick={handleNav} className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group text-sm font-medium mb-0.5",
+              location === "/settings/attendance-rules"
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+            )}>
+              <Cog className="w-[18px] h-[18px] transition-transform group-hover:rotate-45" />
+              Attendance Rules
+            </Link>
             <Link href="/settings/biometrics" onClick={handleNav} className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group text-sm font-medium mb-0.5",
               location === "/settings/biometrics"

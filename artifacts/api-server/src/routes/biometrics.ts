@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { biometricSettingsTable, attendanceTable, employeesTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth.js";
+import { processAttendance, saveAttendanceLog } from "../lib/attendance-engine.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -96,22 +97,34 @@ router.post("/import", adminOnly, async (req, res) => {
           .where(and(eq(attendanceTable.employeeId, emp[0].id), eq(attendanceTable.date, date)))
           .limit(1);
         
+        const engineResult = await processAttendance({
+          employeeId: emp[0].id,
+          date,
+          checkIn: checkIn || null,
+          checkOut: checkOut || null,
+          status: status || "present",
+          workHours: null,
+          notes: null,
+        });
+
         if (existing[0]) {
           await db.update(attendanceTable).set({
             checkIn: checkIn || null,
             checkOut: checkOut || null,
-            status: status || "present",
-            workHours: calcWorkHours(checkIn, checkOut),
+            status: engineResult.status,
+            workHours: engineResult.workHours,
           }).where(eq(attendanceTable.id, existing[0].id));
+          await saveAttendanceLog(existing[0].id, emp[0].id, date, engineResult.events);
         } else {
-          await db.insert(attendanceTable).values({
+          const [newRec] = await db.insert(attendanceTable).values({
             employeeId: emp[0].id,
             date,
             checkIn: checkIn || null,
             checkOut: checkOut || null,
-            status: status || "present",
-            workHours: calcWorkHours(checkIn, checkOut),
-          });
+            status: engineResult.status,
+            workHours: engineResult.workHours,
+          }).returning();
+          await saveAttendanceLog(newRec.id, emp[0].id, date, engineResult.events);
         }
         imported++;
       } catch (e: any) {
