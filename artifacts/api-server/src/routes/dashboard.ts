@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { employeesTable, attendanceTable, leaveRequestsTable, payrollTable, timesheetsTable, departmentsTable } from "@workspace/db/schema";
-import { eq, sql, and, gte } from "drizzle-orm";
+import { eq, sql, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
 router.use(requireAuth);
 
+function getLastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
 router.get("/stats", async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const thisMonth = new Date();
-    const monthStart = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, "0")}-01`;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -62,7 +64,6 @@ router.get("/stats", async (req, res) => {
 
 router.get("/charts", async (req, res) => {
   try {
-    // Attendance trend - last 6 months
     const attendanceTrend = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -70,13 +71,14 @@ router.get("/charts", async (req, res) => {
       const m = d.getMonth() + 1;
       const y = d.getFullYear();
       const monthStr = d.toLocaleString("default", { month: "short" });
+      const lastDay = getLastDayOfMonth(y, m);
       const start = `${y}-${String(m).padStart(2, "0")}-01`;
-      const end = `${y}-${String(m).padStart(2, "0")}-31`;
+      const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
       
       const counts = await db
         .select({ status: attendanceTable.status, count: sql<number>`count(*)` })
         .from(attendanceTable)
-        .where(and(gte(attendanceTable.date, start), sql`${attendanceTable.date} <= ${end}`))
+        .where(and(gte(attendanceTable.date, start), lte(attendanceTable.date, end)))
         .groupBy(attendanceTable.status);
       
       const byStatus = counts.reduce((acc, c) => { acc[c.status] = Number(c.count); return acc; }, {} as Record<string, number>);
@@ -88,7 +90,6 @@ router.get("/charts", async (req, res) => {
       });
     }
 
-    // Department distribution
     const depts = await db
       .select({
         name: departmentsTable.name,
@@ -100,7 +101,6 @@ router.get("/charts", async (req, res) => {
 
     const departmentDistribution = depts.map(d => ({ department: d.name, count: Number(d.count) }));
 
-    // Payroll trend - last 6 months
     const payrollTrend = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -117,7 +117,6 @@ router.get("/charts", async (req, res) => {
       payrollTrend.push({ month: monthStr, amount: Number(result[0]?.total || 0) });
     }
 
-    // Leave by type
     const leaves = await db
       .select({ type: leaveRequestsTable.leaveType, count: sql<number>`count(*)` })
       .from(leaveRequestsTable)
