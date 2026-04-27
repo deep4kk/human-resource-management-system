@@ -66,7 +66,6 @@ workspace/
 11. **Company Policies** — HR policies organized by category with versioning and expandable content
 12. **Biometrics Settings** — Biometric device configuration + CSV attendance import
 13. **Branding Settings** — Live branding control (name, logo, colors, theme)
-14. **Attendance Rules Engine** — Configurable rules for late detection (grace period, monthly allowed lates, penalty types), working hours thresholds (full/half/absent), shift timing enforcement, auto-regularization, feature flags per rule module, and audit event logs per attendance record
 
 ## Auth
 
@@ -81,7 +80,7 @@ workspace/
 
 ## Database Schema
 
-Tables: `users`, `employees`, `departments`, `attendance`, `leave_requests`, `payroll`, `timesheets`, `kpis`, `appraisals`, `branding`, `biometric_settings`, `document_templates`, `generated_documents`, `holidays`, `announcements`, `company_policies`, `attendance_settings`, `feature_flags`, `attendance_logs`
+Tables: `users`, `employees`, `departments`, `attendance`, `leave_requests`, `payroll`, `timesheets`, `kpis`, `appraisals`, `branding`, `biometric_settings`, `document_templates`, `generated_documents`, `holidays`, `announcements`, `company_policies`
 
 ## Key API Routes
 
@@ -120,11 +119,6 @@ All routes prefixed with `/api/`. Write endpoints for new modules require admin/
 - `POST/PUT/DELETE /announcements` — Announcement CRUD (admin/hr only)
 - `GET /policies` — Company policies (filterable by category)
 - `POST/PUT/DELETE /policies` — Policy CRUD (admin/hr only)
-- `GET /attendance-settings` — Attendance rules + feature flags (admin/hr only)
-- `PUT /attendance-settings` — Update attendance rules (admin/hr only)
-- `PUT /attendance-settings/flags` — Toggle feature flags (admin/hr only)
-- `GET /attendance-settings/flags/init` — Initialize default flags (admin/hr only)
-- `GET /attendance-settings/logs` — Attendance audit event logs (admin/hr only)
 
 ## Frontend Architecture
 
@@ -138,7 +132,3 @@ All routes prefixed with `/api/`. Write endpoints for new modules require admin/
 - Currency formatting via `formatCurrency()` in `lib/utils.ts` (₹ INR)
 - Document templates use `{{variable_name}}` placeholders; auto-filled: employee_name, designation, department, salary, join_date, email, date, company_name
 - Biometric CSV format: `employee_code,date,check_in,check_out,status`
-- Attendance engine processes every check-in through configurable pipeline: Shift Check → Late Detection → Auto Regularize → Working Hours → Penalty Check
-- Feature flags (`feature_flags` table) control which engine modules are active: `late_rule`, `working_hours_rule`, `shift_rule`, `auto_regularization`
-- Rule events are stored as jsonb arrays in `attendance_logs` and displayed in expandable rows on the attendance page
-- Settings page: `/settings/attendance-rules` (admin/hr only)

@@ -1,9 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { attendanceTable, leaveRequestsTable, employeesTable, attendanceLogsTable } from "@workspace/db/schema";
+import { attendanceTable, leaveRequestsTable, employeesTable } from "@workspace/db/schema";
 import { eq, and, sql, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
-import { processAttendance, saveAttendanceLog } from "../lib/attendance-engine.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -58,21 +57,10 @@ router.get("/", async (req, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(attendanceTable.date));
 
-    const attendanceIds = records.map(r => r.id);
-    let logsMap: Record<number, string[]> = {};
-    if (attendanceIds.length > 0) {
-      const logs = await db.select().from(attendanceLogsTable)
-        .where(sql`${attendanceLogsTable.attendanceId} = ANY(ARRAY[${sql.raw(attendanceIds.join(","))}]::int[])`);
-      for (const log of logs) {
-        logsMap[log.attendanceId] = (log.events as string[]) || [];
-      }
-    }
-
     res.json(records.map(r => ({
       ...r,
       employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
       workHours: r.workHours ? Number(r.workHours) : null,
-      ruleEvents: logsMap[r.id] || [],
     })));
   } catch (err) {
     req.log.error({ err }, "List attendance error");
@@ -104,21 +92,10 @@ router.get("/today", async (req, res) => {
         .where(eq(attendanceTable.date, today)),
     ]);
 
-    const attendanceIds = todayRecords.map(r => r.id);
-    let logsMap: Record<number, string[]> = {};
-    if (attendanceIds.length > 0) {
-      const logs = await db.select().from(attendanceLogsTable)
-        .where(sql`${attendanceLogsTable.attendanceId} = ANY(ARRAY[${sql.raw(attendanceIds.join(","))}]::int[])`);
-      for (const log of logs) {
-        logsMap[log.attendanceId] = (log.events as string[]) || [];
-      }
-    }
-
     const records = todayRecords.map(r => ({
       ...r,
       employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
       workHours: r.workHours ? Number(r.workHours) : null,
-      ruleEvents: logsMap[r.id] || [],
     }));
 
     const statusCounts = records.reduce((acc, r) => {
@@ -132,7 +109,6 @@ router.get("/today", async (req, res) => {
       present: statusCounts["present"] || 0,
       absent: statusCounts["absent"] || 0,
       late: statusCounts["late"] || 0,
-      halfDay: statusCounts["half_day"] || 0,
       onLeave: statusCounts["on_leave"] || 0,
       records,
     });
@@ -146,35 +122,31 @@ router.post("/", async (req, res) => {
   try {
     const { employeeId, date, checkIn, checkOut, status, notes } = req.body;
     
-    if (!employeeId || !date) {
-      res.status(400).json({ error: "employeeId and date are required" });
+    if (!employeeId || !date || !status) {
+      res.status(400).json({ error: "employeeId, date, and status are required" });
       return;
     }
 
     const timeIn = extractTime(checkIn);
     const timeOut = extractTime(checkOut);
-
-    const engineResult = await processAttendance({
-      employeeId,
-      date,
-      checkIn: timeIn,
-      checkOut: timeOut,
-      status: status || "present",
-      workHours: null,
-      notes: notes || null,
-    });
+    
+    let workHours: string | null = null;
+    if (timeIn && timeOut) {
+      const [ih, im] = timeIn.split(":").map(Number);
+      const [oh, om] = timeOut.split(":").map(Number);
+      const mins = (oh * 60 + om) - (ih * 60 + im);
+      if (mins > 0) workHours = (mins / 60).toFixed(2);
+    }
 
     const [record] = await db.insert(attendanceTable).values({
       employeeId,
       date,
       checkIn: timeIn,
       checkOut: timeOut,
-      status: engineResult.status,
-      workHours: engineResult.workHours,
+      status,
+      workHours,
       notes: notes || null,
     }).returning();
-
-    await saveAttendanceLog(record.id, employeeId, date, engineResult.events);
 
     const emp = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
       .from(employeesTable).where(eq(employeesTable.id, employeeId)).limit(1);
@@ -183,7 +155,6 @@ router.post("/", async (req, res) => {
       ...record,
       employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
       workHours: record.workHours ? Number(record.workHours) : null,
-      ruleEvents: engineResult.events,
     });
   } catch (err) {
     req.log.error({ err }, "Create attendance error");
@@ -201,28 +172,23 @@ router.put("/:id", async (req, res) => {
     const existing = await db.select().from(attendanceTable).where(eq(attendanceTable.id, id)).limit(1);
     if (!existing[0]) { res.status(404).json({ error: "Not Found" }); return; }
 
-    const engineResult = await processAttendance({
-      id,
-      employeeId: existing[0].employeeId,
-      date: existing[0].date,
-      checkIn: existing[0].checkIn,
-      checkOut: timeOut || existing[0].checkOut,
-      status: status || existing[0].status,
-      workHours: existing[0].workHours,
-      notes: notes || existing[0].notes,
-    });
+    let workHours: string | null = existing[0].workHours;
+    if (existing[0].checkIn && timeOut) {
+      const [ih, im] = existing[0].checkIn.split(":").map(Number);
+      const [oh, om] = timeOut.split(":").map(Number);
+      const mins = (oh * 60 + om) - (ih * 60 + im);
+      if (mins > 0) workHours = (mins / 60).toFixed(2);
+    }
 
     const [updated] = await db.update(attendanceTable)
       .set({
         ...(timeOut && { checkOut: timeOut }),
-        status: engineResult.status,
+        ...(status && { status }),
         ...(notes !== undefined && { notes: notes || null }),
-        workHours: engineResult.workHours,
+        workHours,
       })
       .where(eq(attendanceTable.id, id))
       .returning();
-
-    await saveAttendanceLog(updated.id, updated.employeeId, updated.date, engineResult.events);
 
     const emp = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
       .from(employeesTable).where(eq(employeesTable.id, updated.employeeId)).limit(1);
@@ -231,7 +197,6 @@ router.put("/:id", async (req, res) => {
       ...updated,
       employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
       workHours: updated.workHours ? Number(updated.workHours) : null,
-      ruleEvents: engineResult.events,
     });
   } catch (err) {
     req.log.error({ err }, "Update attendance error");
