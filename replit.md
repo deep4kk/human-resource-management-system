@@ -73,10 +73,10 @@ workspace/
 - Roles: admin, hr, manager, employee
 - Role-based access control (RBAC) enforced server-side via `requireRole()` middleware
 - Demo accounts:
-  - Admin: admin@toyokambocha.com / admin123
-  - HR: hr@toyokambocha.com / hr123
-  - Employee: emp@toyokambocha.com / emp123
-  - Manager: sneha@toyokambocha.com / manager123
+  - Admin: admin@toyo-kambocha.com / admin123
+  - HR: hr@toyo-kambocha.com / hr123
+  - Employee: employee@toyo-kambocha.com / emp123
+  - Manager: manager@toyo-kambocha.com / mgr123
 
 ## Database Schema
 

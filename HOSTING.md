@@ -21,14 +21,26 @@ This guide provides step-by-step instructions for deploying the HRMS application
 
 ---
 
+## Quick Start (TL;DR)
+
+For a quick production deployment:
+
+1. Clone repo: `git clone https://github.com/deep4kk/human-resource-management-system.git`
+2. Install deps: `pnpm install`
+3. Configure env files: `cp artifacts/api-server/.env.example artifacts/api-server/.env`
+4. Set up database and run migrations: `cd artifacts/api-server && pnpm run db:push && pnpm run db:seed`
+5. Deploy backend to Railway/Render/Fly.io
+6. Deploy frontend to Vercel/Netlify
+
+---
+
 ## Phase 1: Prepare Your Repository
 
-### 1.1 Clean Up Replit Dependencies
-
-The application has been modified to remove Replit-specific dependencies. Ensure you have the latest changes:
+### 1.1 Get Latest Code
 
 ```bash
-git pull origin main
+git clone https://github.com/deep4kk/human-resource-management-system.git
+cd human-resource-management-system
 pnpm install
 ```
 
@@ -85,13 +97,18 @@ BASE_PATH=/
 2. Create new project > Add PostgreSQL
 3. Get connection string from variables tab
 
-### Run Database Migrations
+### Run Database Setup
 
-Once your database is set up, run migrations:
+Once your database is set up:
 
 ```bash
 cd artifacts/api-server
+
+# Push schema to database (creates/updates tables)
 pnpm run db:push
+
+# Seed demo data (creates admin/HR/employee/manager accounts)
+pnpm run db:seed
 ```
 
 ---
@@ -327,3 +344,10 @@ For issues or questions:
 2. Verify environment variables
 3. Test database connectivity
 4. Review hosting platform documentation
+
+---
+
+## Related Documentation
+
+- [Local Development Guide](./LOCAL_DEV.md) - For setting up development environment
+- [Main README](./replit.md) - Project overview and architecture
