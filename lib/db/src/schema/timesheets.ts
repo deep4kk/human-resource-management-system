@@ -1,4 +1,13 @@
-import { pgTable, serial, integer, text, numeric, boolean, timestamp, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  text,
+  numeric,
+  boolean,
+  timestamp,
+  date,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,6 +25,10 @@ export const timesheetsTable = pgTable("timesheets", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertTimesheetSchema = createInsertSchema(timesheetsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTimesheetSchema = createInsertSchema(timesheetsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
 export type Timesheet = typeof timesheetsTable.$inferSelect;

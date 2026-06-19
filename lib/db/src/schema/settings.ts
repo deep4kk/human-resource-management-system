@@ -1,4 +1,13 @@
-import { pgTable, serial, text, timestamp, integer, boolean, numeric, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  numeric,
+  date,
+} from "drizzle-orm/pg-core";
 
 export const biometricSettingsTable = pgTable("biometric_settings", {
   id: serial("id").primaryKey(),

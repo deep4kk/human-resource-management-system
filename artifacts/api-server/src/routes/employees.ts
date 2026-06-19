@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { employeesTable, departmentsTable, usersTable } from "@workspace/db/schema";
+import {
+  employeesTable,
+  departmentsTable,
+  usersTable,
+} from "@workspace/db/schema";
 import { eq, ilike, and, sql, or } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { hashPassword } from "../lib/auth.js";
@@ -16,15 +20,16 @@ router.get("/", async (req, res) => {
 
     const conditions: any[] = [];
     if (status) conditions.push(eq(employeesTable.status, status as string));
-    if (department) conditions.push(eq(employeesTable.departmentId, Number(department)));
+    if (department)
+      conditions.push(eq(employeesTable.departmentId, Number(department)));
     if (search) {
       conditions.push(
         or(
           ilike(employeesTable.firstName, `%${search}%`),
           ilike(employeesTable.lastName, `%${search}%`),
           ilike(employeesTable.email, `%${search}%`),
-          ilike(employeesTable.employeeCode, `%${search}%`)
-        )
+          ilike(employeesTable.employeeCode, `%${search}%`),
+        ),
       );
     }
 
@@ -54,7 +59,10 @@ router.get("/", async (req, res) => {
           createdAt: employeesTable.createdAt,
         })
         .from(employeesTable)
-        .leftJoin(departmentsTable, eq(employeesTable.departmentId, departmentsTable.id))
+        .leftJoin(
+          departmentsTable,
+          eq(employeesTable.departmentId, departmentsTable.id),
+        )
         .where(whereClause)
         .limit(Number(limit))
         .offset(offset)
@@ -66,12 +74,18 @@ router.get("/", async (req, res) => {
     ]);
 
     // Attach manager names
-    const managerIds = [...new Set(employees.filter(e => e.managerId).map(e => e.managerId!))];
+    const managerIds = [
+      ...new Set(employees.filter((e) => e.managerId).map((e) => e.managerId!)),
+    ];
     const managers: Record<number, string> = {};
     if (managerIds.length > 0) {
       for (const mid of managerIds) {
         const m = await db
-          .select({ id: employeesTable.id, firstName: employeesTable.firstName, lastName: employeesTable.lastName })
+          .select({
+            id: employeesTable.id,
+            firstName: employeesTable.firstName,
+            lastName: employeesTable.lastName,
+          })
           .from(employeesTable)
           .where(eq(employeesTable.id, mid))
           .limit(1);
@@ -79,7 +93,7 @@ router.get("/", async (req, res) => {
       }
     }
 
-    const result = employees.map(e => ({
+    const result = employees.map((e) => ({
       ...e,
       managerName: e.managerId ? managers[e.managerId] || null : null,
       salary: e.salary ? Number(e.salary) : null,
@@ -101,43 +115,70 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, departmentId, designation, role, joinDate, salary, managerId, address, dateOfBirth, gender, password } = req.body;
-    
-    // Generate employee code
-    const countResult = await db.select({ count: sql<number>`count(*)` }).from(employeesTable);
-    const count = Number(countResult[0]?.count || 0) + 1;
-    const employeeCode = `TK${String(count).padStart(4, "0")}`;
-
-    const [employee] = await db.insert(employeesTable).values({
-      employeeCode,
+    const {
       firstName,
       lastName,
       email,
-      phone: phone || null,
-      departmentId: departmentId || null,
-      designation: designation || null,
-      role: role || "employee",
-      joinDate: joinDate || null,
-      salary: salary ? String(salary) : null,
-      managerId: managerId || null,
-      address: address || null,
-      dateOfBirth: dateOfBirth || null,
-      gender: gender || null,
-    }).returning();
+      phone,
+      departmentId,
+      designation,
+      role,
+      joinDate,
+      salary,
+      managerId,
+      address,
+      dateOfBirth,
+      gender,
+      password,
+    } = req.body;
+
+    // Generate employee code
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(employeesTable);
+    const count = Number(countResult[0]?.count || 0) + 1;
+    const employeeCode = `TK${String(count).padStart(4, "0")}`;
+
+    const [employee] = await db
+      .insert(employeesTable)
+      .values({
+        employeeCode,
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        departmentId: departmentId || null,
+        designation: designation || null,
+        role: role || "employee",
+        joinDate: joinDate || null,
+        salary: salary ? String(salary) : null,
+        managerId: managerId || null,
+        address: address || null,
+        dateOfBirth: dateOfBirth || null,
+        gender: gender || null,
+      })
+      .returning();
 
     // Create user account
     if (password) {
-      await db.insert(usersTable).values({
-        email,
-        passwordHash: hashPassword(password),
-        name: `${firstName} ${lastName}`,
-        role: role || "employee",
-        employeeId: employee.id,
-      }).onConflictDoNothing();
+      await db
+        .insert(usersTable)
+        .values({
+          email,
+          passwordHash: hashPassword(password),
+          name: `${firstName} ${lastName}`,
+          role: role || "employee",
+          employeeId: employee.id,
+        })
+        .onConflictDoNothing();
     }
 
     const dept = departmentId
-      ? await db.select({ name: departmentsTable.name }).from(departmentsTable).where(eq(departmentsTable.id, departmentId)).limit(1)
+      ? await db
+          .select({ name: departmentsTable.name })
+          .from(departmentsTable)
+          .where(eq(departmentsTable.id, departmentId))
+          .limit(1)
       : [];
 
     res.status(201).json({
@@ -179,7 +220,10 @@ router.get("/:id", async (req, res) => {
         createdAt: employeesTable.createdAt,
       })
       .from(employeesTable)
-      .leftJoin(departmentsTable, eq(employeesTable.departmentId, departmentsTable.id))
+      .leftJoin(
+        departmentsTable,
+        eq(employeesTable.departmentId, departmentsTable.id),
+      )
       .where(eq(employeesTable.id, id))
       .limit(1);
 
@@ -190,10 +234,22 @@ router.get("/:id", async (req, res) => {
     const e = employees[0];
     let managerName = null;
     if (e.managerId) {
-      const mgr = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName }).from(employeesTable).where(eq(employeesTable.id, e.managerId)).limit(1);
+      const mgr = await db
+        .select({
+          firstName: employeesTable.firstName,
+          lastName: employeesTable.lastName,
+        })
+        .from(employeesTable)
+        .where(eq(employeesTable.id, e.managerId))
+        .limit(1);
       if (mgr[0]) managerName = `${mgr[0].firstName} ${mgr[0].lastName}`;
     }
-    res.json({ ...e, managerName, salary: e.salary ? Number(e.salary) : null, createdAt: e.createdAt.toISOString() });
+    res.json({
+      ...e,
+      managerName,
+      salary: e.salary ? Number(e.salary) : null,
+      createdAt: e.createdAt.toISOString(),
+    });
   } catch (err) {
     req.log.error({ err }, "Get employee error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -203,15 +259,33 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { firstName, lastName, email, phone, departmentId, designation, role, status, joinDate, salary, managerId, address, dateOfBirth, gender } = req.body;
-    
-    const [updated] = await db.update(employeesTable)
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      departmentId,
+      designation,
+      role,
+      status,
+      joinDate,
+      salary,
+      managerId,
+      address,
+      dateOfBirth,
+      gender,
+    } = req.body;
+
+    const [updated] = await db
+      .update(employeesTable)
       .set({
         ...(firstName !== undefined && { firstName }),
         ...(lastName !== undefined && { lastName }),
         ...(email !== undefined && { email }),
         ...(phone !== undefined && { phone: phone || null }),
-        ...(departmentId !== undefined && { departmentId: departmentId || null }),
+        ...(departmentId !== undefined && {
+          departmentId: departmentId || null,
+        }),
         ...(designation !== undefined && { designation: designation || null }),
         ...(role !== undefined && { role }),
         ...(status !== undefined && { status }),
@@ -231,7 +305,11 @@ router.put("/:id", async (req, res) => {
       return;
     }
 
-    res.json({ ...updated, salary: updated.salary ? Number(updated.salary) : null, createdAt: updated.createdAt.toISOString() });
+    res.json({
+      ...updated,
+      salary: updated.salary ? Number(updated.salary) : null,
+      createdAt: updated.createdAt.toISOString(),
+    });
   } catch (err) {
     req.log.error({ err }, "Update employee error");
     res.status(500).json({ error: "Internal Server Error" });

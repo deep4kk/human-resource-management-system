@@ -1,4 +1,9 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -7,7 +12,8 @@ import { logger } from "./lib/logger";
 const app: Express = express();
 
 // Get allowed origins from environment variable
-const corsOrigins = process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) || [];
+const corsOrigins =
+  process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) || [];
 
 // Security headers middleware
 app.use((req: Request, res: Response, next: NextFunction) => {

@@ -11,8 +11,10 @@ router.get("/", async (req, res) => {
   try {
     const { employeeId, startDate, endDate, status } = req.query;
     const conditions: any[] = [];
-    if (employeeId) conditions.push(eq(timesheetsTable.employeeId, Number(employeeId)));
-    if (startDate) conditions.push(gte(timesheetsTable.date, startDate as string));
+    if (employeeId)
+      conditions.push(eq(timesheetsTable.employeeId, Number(employeeId)));
+    if (startDate)
+      conditions.push(gte(timesheetsTable.date, startDate as string));
     if (endDate) conditions.push(lte(timesheetsTable.date, endDate as string));
     if (status) conditions.push(eq(timesheetsTable.status, status as string));
 
@@ -32,16 +34,21 @@ router.get("/", async (req, res) => {
         createdAt: timesheetsTable.createdAt,
       })
       .from(timesheetsTable)
-      .leftJoin(employeesTable, eq(timesheetsTable.employeeId, employeesTable.id))
+      .leftJoin(
+        employeesTable,
+        eq(timesheetsTable.employeeId, employeesTable.id),
+      )
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(timesheetsTable.date);
 
-    res.json(records.map(r => ({
-      ...r,
-      employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      hours: Number(r.hours),
-      createdAt: r.createdAt.toISOString(),
-    })));
+    res.json(
+      records.map((r) => ({
+        ...r,
+        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
+        hours: Number(r.hours),
+        createdAt: r.createdAt.toISOString(),
+      })),
+    );
   } catch (err) {
     req.log.error({ err }, "List timesheets error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -50,20 +57,30 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { employeeId, date, project, task, hours, billable, description } = req.body;
-    const [record] = await db.insert(timesheetsTable).values({
-      employeeId,
-      date,
-      project,
-      task,
-      hours: String(hours),
-      billable: billable ?? true,
-      description: description || null,
-      status: "pending",
-    }).returning();
+    const { employeeId, date, project, task, hours, billable, description } =
+      req.body;
+    const [record] = await db
+      .insert(timesheetsTable)
+      .values({
+        employeeId,
+        date,
+        project,
+        task,
+        hours: String(hours),
+        billable: billable ?? true,
+        description: description || null,
+        status: "pending",
+      })
+      .returning();
 
-    const emp = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
-      .from(employeesTable).where(eq(employeesTable.id, employeeId)).limit(1);
+    const emp = await db
+      .select({
+        firstName: employeesTable.firstName,
+        lastName: employeesTable.lastName,
+      })
+      .from(employeesTable)
+      .where(eq(employeesTable.id, employeeId))
+      .limit(1);
 
     res.status(201).json({
       ...record,
@@ -81,14 +98,24 @@ router.put("/:id/status", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { status } = req.body;
-    const [updated] = await db.update(timesheetsTable)
+    const [updated] = await db
+      .update(timesheetsTable)
       .set({ status, updatedAt: new Date() })
       .where(eq(timesheetsTable.id, id))
       .returning();
-    if (!updated) { res.status(404).json({ error: "Not Found" }); return; }
+    if (!updated) {
+      res.status(404).json({ error: "Not Found" });
+      return;
+    }
 
-    const emp = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
-      .from(employeesTable).where(eq(employeesTable.id, updated.employeeId)).limit(1);
+    const emp = await db
+      .select({
+        firstName: employeesTable.firstName,
+        lastName: employeesTable.lastName,
+      })
+      .from(employeesTable)
+      .where(eq(employeesTable.id, updated.employeeId))
+      .limit(1);
 
     res.json({
       ...updated,

@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { kpisTable, appraisalsTable, employeesTable } from "@workspace/db/schema";
+import {
+  kpisTable,
+  appraisalsTable,
+  employeesTable,
+} from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 
@@ -32,13 +36,15 @@ router.get("/kpis", async (req, res) => {
       ? await query.where(eq(kpisTable.employeeId, Number(employeeId)))
       : await query;
 
-    res.json(records.map(r => ({
-      ...r,
-      employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      target: Number(r.target),
-      achieved: Number(r.achieved),
-      createdAt: r.createdAt.toISOString(),
-    })));
+    res.json(
+      records.map((r) => ({
+        ...r,
+        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
+        target: Number(r.target),
+        achieved: Number(r.achieved),
+        createdAt: r.createdAt.toISOString(),
+      })),
+    );
   } catch (err) {
     req.log.error({ err }, "List KPIs error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -47,20 +53,38 @@ router.get("/kpis", async (req, res) => {
 
 router.post("/kpis", async (req, res) => {
   try {
-    const { employeeId, title, description, target, achieved, unit, period, status } = req.body;
-    const [record] = await db.insert(kpisTable).values({
+    const {
       employeeId,
       title,
-      description: description || null,
-      target: String(target),
-      achieved: String(achieved || 0),
+      description,
+      target,
+      achieved,
       unit,
       period,
-      status: status || "on_track",
-    }).returning();
+      status,
+    } = req.body;
+    const [record] = await db
+      .insert(kpisTable)
+      .values({
+        employeeId,
+        title,
+        description: description || null,
+        target: String(target),
+        achieved: String(achieved || 0),
+        unit,
+        period,
+        status: status || "on_track",
+      })
+      .returning();
 
-    const emp = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
-      .from(employeesTable).where(eq(employeesTable.id, employeeId)).limit(1);
+    const emp = await db
+      .select({
+        firstName: employeesTable.firstName,
+        lastName: employeesTable.lastName,
+      })
+      .from(employeesTable)
+      .where(eq(employeesTable.id, employeeId))
+      .limit(1);
 
     res.status(201).json({
       ...record,
@@ -96,33 +120,44 @@ router.get("/appraisals", async (req, res) => {
         createdAt: appraisalsTable.createdAt,
       })
       .from(appraisalsTable)
-      .leftJoin(employeesTable, eq(appraisalsTable.employeeId, employeesTable.id));
+      .leftJoin(
+        employeesTable,
+        eq(appraisalsTable.employeeId, employeesTable.id),
+      );
 
     const records = employeeId
       ? await query.where(eq(appraisalsTable.employeeId, Number(employeeId)))
       : await query;
 
-    const reviewerIds = [...new Set(records.map(r => r.reviewerId))];
+    const reviewerIds = [...new Set(records.map((r) => r.reviewerId))];
     const reviewers: Record<number, string> = {};
     if (reviewerIds.length > 0) {
       for (const rid of reviewerIds) {
-        const r = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName })
-          .from(employeesTable).where(eq(employeesTable.id, rid)).limit(1);
+        const r = await db
+          .select({
+            firstName: employeesTable.firstName,
+            lastName: employeesTable.lastName,
+          })
+          .from(employeesTable)
+          .where(eq(employeesTable.id, rid))
+          .limit(1);
         if (r[0]) reviewers[rid] = `${r[0].firstName} ${r[0].lastName}`;
       }
     }
 
-    res.json(records.map(r => ({
-      ...r,
-      employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      reviewerName: reviewers[r.reviewerId] || "",
-      overallRating: Number(r.overallRating),
-      technicalSkills: Number(r.technicalSkills),
-      communication: Number(r.communication),
-      teamwork: Number(r.teamwork),
-      leadership: Number(r.leadership),
-      createdAt: r.createdAt.toISOString(),
-    })));
+    res.json(
+      records.map((r) => ({
+        ...r,
+        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
+        reviewerName: reviewers[r.reviewerId] || "",
+        overallRating: Number(r.overallRating),
+        technicalSkills: Number(r.technicalSkills),
+        communication: Number(r.communication),
+        teamwork: Number(r.teamwork),
+        leadership: Number(r.leadership),
+        createdAt: r.createdAt.toISOString(),
+      })),
+    );
   } catch (err) {
     req.log.error({ err }, "List appraisals error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -131,23 +166,50 @@ router.get("/appraisals", async (req, res) => {
 
 router.post("/appraisals", async (req, res) => {
   try {
-    const { employeeId, reviewerId, period, overallRating, technicalSkills, communication, teamwork, leadership, comments } = req.body;
-    const [record] = await db.insert(appraisalsTable).values({
+    const {
       employeeId,
       reviewerId,
       period,
-      overallRating: String(overallRating),
-      technicalSkills: String(technicalSkills),
-      communication: String(communication),
-      teamwork: String(teamwork),
-      leadership: String(leadership),
-      comments: comments || null,
-      status: "submitted",
-    }).returning();
+      overallRating,
+      technicalSkills,
+      communication,
+      teamwork,
+      leadership,
+      comments,
+    } = req.body;
+    const [record] = await db
+      .insert(appraisalsTable)
+      .values({
+        employeeId,
+        reviewerId,
+        period,
+        overallRating: String(overallRating),
+        technicalSkills: String(technicalSkills),
+        communication: String(communication),
+        teamwork: String(teamwork),
+        leadership: String(leadership),
+        comments: comments || null,
+        status: "submitted",
+      })
+      .returning();
 
     const [emp, rev] = await Promise.all([
-      db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName }).from(employeesTable).where(eq(employeesTable.id, employeeId)).limit(1),
-      db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName }).from(employeesTable).where(eq(employeesTable.id, reviewerId)).limit(1),
+      db
+        .select({
+          firstName: employeesTable.firstName,
+          lastName: employeesTable.lastName,
+        })
+        .from(employeesTable)
+        .where(eq(employeesTable.id, employeeId))
+        .limit(1),
+      db
+        .select({
+          firstName: employeesTable.firstName,
+          lastName: employeesTable.lastName,
+        })
+        .from(employeesTable)
+        .where(eq(employeesTable.id, reviewerId))
+        .limit(1),
     ]);
 
     res.status(201).json({

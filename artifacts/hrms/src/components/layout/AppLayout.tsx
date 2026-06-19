@@ -25,11 +25,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
       </AnimatePresence>
 
-      <div className={`
+      <div
+        className={`
         fixed md:static inset-y-0 left-0 z-50 
         transform transition-transform duration-300 ease-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}
+      >
         <Sidebar onClose={() => setSidebarOpen(false)} />
       </div>
 

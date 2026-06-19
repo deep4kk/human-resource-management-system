@@ -2,7 +2,12 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { hashPassword, verifyPassword, generateToken, requireAuth } from "../lib/auth.js";
+import {
+  hashPassword,
+  verifyPassword,
+  generateToken,
+  requireAuth,
+} from "../lib/auth.js";
 
 const router = Router();
 
@@ -10,17 +15,27 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      res.status(400).json({ error: "Bad Request", message: "Email and password required" });
+      res
+        .status(400)
+        .json({ error: "Bad Request", message: "Email and password required" });
       return;
     }
-    const users = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+    const users = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
     const user = users[0];
     if (!user || !verifyPassword(password, user.passwordHash)) {
-      res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
+      res
+        .status(401)
+        .json({ error: "Unauthorized", message: "Invalid credentials" });
       return;
     }
     if (!user.isActive) {
-      res.status(401).json({ error: "Unauthorized", message: "Account is inactive" });
+      res
+        .status(401)
+        .json({ error: "Unauthorized", message: "Account is inactive" });
       return;
     }
     const token = generateToken(user.id, user.role);
@@ -44,7 +59,11 @@ router.post("/login", async (req, res) => {
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const { userId } = (req as any).user;
-    const users = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const users = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
     const user = users[0];
     if (!user) {
       res.status(404).json({ error: "Not Found" });

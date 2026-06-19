@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { payrollTable, employeesTable, brandingTable } from "@workspace/db/schema";
+import {
+  payrollTable,
+  employeesTable,
+  brandingTable,
+} from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 
@@ -13,7 +17,8 @@ router.get("/", async (req, res) => {
     const conditions: any[] = [];
     if (month) conditions.push(eq(payrollTable.month, Number(month)));
     if (year) conditions.push(eq(payrollTable.year, Number(year)));
-    if (employeeId) conditions.push(eq(payrollTable.employeeId, Number(employeeId)));
+    if (employeeId)
+      conditions.push(eq(payrollTable.employeeId, Number(employeeId)));
 
     const records = await db
       .select({
@@ -42,21 +47,23 @@ router.get("/", async (req, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(payrollTable.year, payrollTable.month);
 
-    res.json(records.map(r => ({
-      ...r,
-      employeeName: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      basicSalary: Number(r.basicSalary),
-      hra: Number(r.hra),
-      allowances: Number(r.allowances),
-      grossSalary: Number(r.grossSalary),
-      pf: Number(r.pf),
-      esi: Number(r.esi),
-      tds: Number(r.tds),
-      deductions: Number(r.deductions),
-      netSalary: Number(r.netSalary),
-      presentDays: Number(r.presentDays),
-      processedAt: r.processedAt?.toISOString() || null,
-    })));
+    res.json(
+      records.map((r) => ({
+        ...r,
+        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
+        basicSalary: Number(r.basicSalary),
+        hra: Number(r.hra),
+        allowances: Number(r.allowances),
+        grossSalary: Number(r.grossSalary),
+        pf: Number(r.pf),
+        esi: Number(r.esi),
+        tds: Number(r.tds),
+        deductions: Number(r.deductions),
+        netSalary: Number(r.netSalary),
+        presentDays: Number(r.presentDays),
+        processedAt: r.processedAt?.toISOString() || null,
+      })),
+    );
   } catch (err) {
     req.log.error({ err }, "List payroll error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -66,15 +73,26 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const { month, year } = req.body;
-    
+
     // Get all active employees
-    const employees = await db.select().from(employeesTable).where(eq(employeesTable.status, "active"));
-    
+    const employees = await db
+      .select()
+      .from(employeesTable)
+      .where(eq(employeesTable.status, "active"));
+
     const payrollRecords = [];
     for (const emp of employees) {
       // Check if payroll already exists
-      const existing = await db.select({ id: payrollTable.id }).from(payrollTable)
-        .where(and(eq(payrollTable.employeeId, emp.id), eq(payrollTable.month, month), eq(payrollTable.year, year)))
+      const existing = await db
+        .select({ id: payrollTable.id })
+        .from(payrollTable)
+        .where(
+          and(
+            eq(payrollTable.employeeId, emp.id),
+            eq(payrollTable.month, month),
+            eq(payrollTable.year, year),
+          ),
+        )
         .limit(1);
       if (existing.length > 0) continue;
 
@@ -88,24 +106,27 @@ router.post("/", async (req, res) => {
       const deductions = pf + esi + tds;
       const netSalary = grossSalary - deductions;
 
-      const [record] = await db.insert(payrollTable).values({
-        employeeId: emp.id,
-        month,
-        year,
-        basicSalary: String(basicSalary.toFixed(2)),
-        hra: String(hra.toFixed(2)),
-        allowances: String(allowances.toFixed(2)),
-        grossSalary: String(grossSalary.toFixed(2)),
-        pf: String(pf.toFixed(2)),
-        esi: String(esi.toFixed(2)),
-        tds: String(tds.toFixed(2)),
-        deductions: String(deductions.toFixed(2)),
-        netSalary: String(netSalary.toFixed(2)),
-        workingDays: 26,
-        presentDays: "26",
-        status: "processed",
-        processedAt: new Date(),
-      }).returning();
+      const [record] = await db
+        .insert(payrollTable)
+        .values({
+          employeeId: emp.id,
+          month,
+          year,
+          basicSalary: String(basicSalary.toFixed(2)),
+          hra: String(hra.toFixed(2)),
+          allowances: String(allowances.toFixed(2)),
+          grossSalary: String(grossSalary.toFixed(2)),
+          pf: String(pf.toFixed(2)),
+          esi: String(esi.toFixed(2)),
+          tds: String(tds.toFixed(2)),
+          deductions: String(deductions.toFixed(2)),
+          netSalary: String(netSalary.toFixed(2)),
+          workingDays: 26,
+          presentDays: "26",
+          status: "processed",
+          processedAt: new Date(),
+        })
+        .returning();
 
       payrollRecords.push({
         ...record,
@@ -133,10 +154,21 @@ router.post("/", async (req, res) => {
 router.get("/:id/payslip", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const [record] = await db.select().from(payrollTable).where(eq(payrollTable.id, id)).limit(1);
-    if (!record) { res.status(404).json({ error: "Not Found" }); return; }
+    const [record] = await db
+      .select()
+      .from(payrollTable)
+      .where(eq(payrollTable.id, id))
+      .limit(1);
+    if (!record) {
+      res.status(404).json({ error: "Not Found" });
+      return;
+    }
 
-    const [emp] = await db.select().from(employeesTable).where(eq(employeesTable.id, record.employeeId)).limit(1);
+    const [emp] = await db
+      .select()
+      .from(employeesTable)
+      .where(eq(employeesTable.id, record.employeeId))
+      .limit(1);
     const branding = await db.select().from(brandingTable).limit(1);
 
     res.json({
@@ -155,11 +187,13 @@ router.get("/:id/payslip", async (req, res) => {
         presentDays: Number(record.presentDays),
         processedAt: record.processedAt?.toISOString() || null,
       },
-      employee: emp ? {
-        ...emp,
-        salary: emp.salary ? Number(emp.salary) : null,
-        createdAt: emp.createdAt.toISOString(),
-      } : null,
+      employee: emp
+        ? {
+            ...emp,
+            salary: emp.salary ? Number(emp.salary) : null,
+            createdAt: emp.createdAt.toISOString(),
+          }
+        : null,
       company: {
         name: branding[0]?.companyName || "Toyo Kambocha",
         logo: branding[0]?.logoUrl || null,

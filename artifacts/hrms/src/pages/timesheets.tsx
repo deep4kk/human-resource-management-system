@@ -13,7 +13,8 @@ export default function Timesheets() {
   const [showAdd, setShowAdd] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const isAdmin = user?.role === "admin" || user?.role === "hr" || user?.role === "manager";
+  const isAdmin =
+    user?.role === "admin" || user?.role === "hr" || user?.role === "manager";
 
   const weeklyHours = (() => {
     if (!timesheets) return { total: 0, billable: 0 };
@@ -24,7 +25,9 @@ export default function Timesheets() {
     const thisWeek = timesheets.filter((t: any) => t.date >= weekStartStr);
     return {
       total: thisWeek.reduce((s: number, t: any) => s + (t.hours || 0), 0),
-      billable: thisWeek.filter((t: any) => t.billable).reduce((s: number, t: any) => s + (t.hours || 0), 0),
+      billable: thisWeek
+        .filter((t: any) => t.billable)
+        .reduce((s: number, t: any) => s + (t.hours || 0), 0),
     };
   })();
 
@@ -33,7 +36,10 @@ export default function Timesheets() {
     try {
       await fetch(`${BASE}/api/timesheets/${id}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("hrms_token")}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("hrms_token")}`,
+        },
         body: JSON.stringify({ status }),
       });
       refetch();
@@ -45,10 +51,17 @@ export default function Timesheets() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Timesheets</h1>
-          <p className="text-muted-foreground">Log hours against projects and tasks.</p>
+          <h1 className="text-3xl font-display font-bold text-foreground">
+            Timesheets
+          </h1>
+          <p className="text-muted-foreground">
+            Log hours against projects and tasks.
+          </p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2">
+        <button
+          onClick={() => setShowAdd(true)}
+          className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+        >
           <Plus className="w-5 h-5" /> Log Time
         </button>
       </div>
@@ -59,8 +72,12 @@ export default function Timesheets() {
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Total Logged (This Week)</p>
-            <p className="text-2xl font-bold">{weeklyHours.total.toFixed(1)} hrs</p>
+            <p className="text-sm text-muted-foreground">
+              Total Logged (This Week)
+            </p>
+            <p className="text-2xl font-bold">
+              {weeklyHours.total.toFixed(1)} hrs
+            </p>
           </div>
         </div>
         <div className="glass-card p-6 rounded-2xl flex items-center gap-4 border-l-4 border-l-emerald-500">
@@ -69,7 +86,9 @@ export default function Timesheets() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Billable Hours</p>
-            <p className="text-2xl font-bold">{weeklyHours.billable.toFixed(1)} hrs</p>
+            <p className="text-2xl font-bold">
+              {weeklyHours.billable.toFixed(1)} hrs
+            </p>
           </div>
         </div>
         <div className="glass-card p-6 rounded-2xl flex items-center gap-4 border-l-4 border-l-accent">
@@ -108,14 +127,27 @@ export default function Timesheets() {
                     <td className="px-6 py-4">{formatDate(ts.date)}</td>
                     <td className="px-6 py-4 font-medium">{ts.employeeName}</td>
                     <td className="px-6 py-4">{ts.project}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{ts.task}</td>
-                    <td className="px-6 py-4 font-bold">{ts.hours}h {ts.billable && <span className="text-xs ml-1 text-emerald-500 bg-emerald-500/10 px-1.5 rounded">$</span>}</td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {ts.task}
+                    </td>
+                    <td className="px-6 py-4 font-bold">
+                      {ts.hours}h{" "}
+                      {ts.billable && (
+                        <span className="text-xs ml-1 text-emerald-500 bg-emerald-500/10 px-1.5 rounded">
+                          $
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
-                       <span className={`capitalize px-2.5 py-1 rounded-full text-xs font-medium border ${
-                        ts.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 
-                        ts.status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 
-                        'bg-destructive/10 text-destructive border-destructive/20'
-                      }`}>
+                      <span
+                        className={`capitalize px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          ts.status === "approved"
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                            : ts.status === "pending"
+                              ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                              : "bg-destructive/10 text-destructive border-destructive/20"
+                        }`}
+                      >
                         {ts.status}
                       </span>
                     </td>
@@ -124,15 +156,23 @@ export default function Timesheets() {
                         {ts.status === "pending" ? (
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => handleStatusChange(ts.id, "approved")}
+                              onClick={() =>
+                                handleStatusChange(ts.id, "approved")
+                              }
                               disabled={updatingId === ts.id}
                               className="p-1.5 text-emerald-600 hover:bg-emerald-500/10 rounded-lg transition-colors"
                               title="Approve"
                             >
-                              {updatingId === ts.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                              {updatingId === ts.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4" />
+                              )}
                             </button>
                             <button
-                              onClick={() => handleStatusChange(ts.id, "rejected")}
+                              onClick={() =>
+                                handleStatusChange(ts.id, "rejected")
+                              }
                               disabled={updatingId === ts.id}
                               className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                               title="Reject"
@@ -141,7 +181,9 @@ export default function Timesheets() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
+                          <span className="text-xs text-muted-foreground">
+                            -
+                          </span>
                         )}
                       </td>
                     )}
@@ -149,7 +191,10 @@ export default function Timesheets() {
                 ))}
                 {(!timesheets || timesheets.length === 0) && (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-6 py-12 text-center text-muted-foreground">
+                    <td
+                      colSpan={isAdmin ? 7 : 6}
+                      className="px-6 py-12 text-center text-muted-foreground"
+                    >
                       No timesheets logged yet.
                     </td>
                   </tr>
@@ -160,11 +205,14 @@ export default function Timesheets() {
         </div>
       </div>
 
-      <LogTimeModal 
-        open={showAdd} 
+      <LogTimeModal
+        open={showAdd}
         onClose={() => setShowAdd(false)}
         user={user}
-        onSuccess={() => { setShowAdd(false); refetch(); }}
+        onSuccess={() => {
+          setShowAdd(false);
+          refetch();
+        }}
       />
     </div>
   );
@@ -184,7 +232,14 @@ function LogTimeModal({ open, onClose, user, onSuccess }: any) {
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   useEffect(() => {
-    setForm({ date: new Date().toISOString().split("T")[0], project: "", task: "", hours: "", billable: true, description: "" });
+    setForm({
+      date: new Date().toISOString().split("T")[0],
+      project: "",
+      task: "",
+      hours: "",
+      billable: true,
+      description: "",
+    });
     setError("");
   }, [open]);
 
@@ -195,12 +250,18 @@ function LogTimeModal({ open, onClose, user, onSuccess }: any) {
       setError("Project, task, and hours are required.");
       return;
     }
-    if (!user?.employeeId) { setError("Your account is not linked to an employee record."); return; }
+    if (!user?.employeeId) {
+      setError("Your account is not linked to an employee record.");
+      return;
+    }
     setSaving(true);
     try {
       const resp = await fetch(`${BASE}/api/timesheets`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("hrms_token")}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("hrms_token")}`,
+        },
         body: JSON.stringify({
           employeeId: user.employeeId,
           date: form.date,
@@ -219,47 +280,98 @@ function LogTimeModal({ open, onClose, user, onSuccess }: any) {
     setSaving(false);
   };
 
-  const set = (key: string, val: any) => setForm(f => ({ ...f, [key]: val }));
+  const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
 
   return (
     <Modal open={open} onClose={onClose} title="Log Time">
       <form onSubmit={handleSubmit} className="space-y-5">
-        {error && <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
-        
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Date</label>
-            <input type="date" value={form.date} onChange={e => set("date", e.target.value)} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm" />
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => set("date", e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Hours</label>
-            <input type="number" step="0.5" min="0.5" max="24" value={form.hours} onChange={e => set("hours", e.target.value)} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm" placeholder="8" />
+            <input
+              type="number"
+              step="0.5"
+              min="0.5"
+              max="24"
+              value={form.hours}
+              onChange={(e) => set("hours", e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              placeholder="8"
+            />
           </div>
         </div>
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Project</label>
-          <input type="text" value={form.project} onChange={e => set("project", e.target.value)} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm" placeholder="e.g. HRMS Portal" />
+          <input
+            type="text"
+            value={form.project}
+            onChange={(e) => set("project", e.target.value)}
+            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+            placeholder="e.g. HRMS Portal"
+          />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Task</label>
-          <input type="text" value={form.task} onChange={e => set("task", e.target.value)} className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm" placeholder="e.g. Frontend Development" />
+          <input
+            type="text"
+            value={form.task}
+            onChange={(e) => set("task", e.target.value)}
+            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+            placeholder="e.g. Frontend Development"
+          />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Description</label>
-          <textarea value={form.description} onChange={e => set("description", e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none" placeholder="What did you work on?" />
+          <textarea
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            rows={2}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none"
+            placeholder="What did you work on?"
+          />
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={form.billable} onChange={e => set("billable", e.target.checked)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
+          <input
+            type="checkbox"
+            checked={form.billable}
+            onChange={(e) => set("billable", e.target.checked)}
+            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+          />
           <span className="text-sm font-medium">Billable</span>
         </label>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-          <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-secondary">Cancel</button>
-          <button type="submit" disabled={saving} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-lg shadow-primary/25 flex items-center gap-2 disabled:opacity-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-lg shadow-primary/25 flex items-center gap-2 disabled:opacity-50"
+          >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Log Time
           </button>

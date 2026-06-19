@@ -1,6 +1,16 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { UserProfile, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import {
+  UserProfile,
+  useGetMe,
+  getGetMeQueryKey,
+} from "@workspace/api-client-react";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -13,14 +23,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("hrms_token"));
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("hrms_token"),
+  );
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading, error } = useGetMe({
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       enabled: !!token,
       retry: false,
-    }
+    },
   });
 
   useEffect(() => {
@@ -42,13 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user: user || null,
-      isLoading: isLoading && !!token,
-      isAuthenticated: !!user,
-      login,
-      logout
-    }}>
+    <AuthContext.Provider
+      value={{
+        user: user || null,
+        isLoading: isLoading && !!token,
+        isAuthenticated: !!user,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

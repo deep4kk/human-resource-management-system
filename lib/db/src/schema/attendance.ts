@@ -1,4 +1,13 @@
-import { pgTable, serial, integer, text, numeric, timestamp, date, time } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  text,
+  numeric,
+  timestamp,
+  date,
+  time,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -28,10 +37,15 @@ export const leaveRequestsTable = pgTable("leave_requests", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertAttendanceSchema = createInsertSchema(attendanceTable).omit({ id: true, createdAt: true });
+export const insertAttendanceSchema = createInsertSchema(attendanceTable).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Attendance = typeof attendanceTable.$inferSelect;
 
-export const insertLeaveRequestSchema = createInsertSchema(leaveRequestsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeaveRequestSchema = createInsertSchema(
+  leaveRequestsTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
 export type LeaveRequest = typeof leaveRequestsTable.$inferSelect;

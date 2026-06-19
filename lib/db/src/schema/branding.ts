@@ -13,6 +13,9 @@ export const brandingTable = pgTable("branding", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertBrandingSchema = createInsertSchema(brandingTable).omit({ id: true, updatedAt: true });
+export const insertBrandingSchema = createInsertSchema(brandingTable).omit({
+  id: true,
+  updatedAt: true,
+});
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type Branding = typeof brandingTable.$inferSelect;

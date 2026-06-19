@@ -9,16 +9,22 @@ router.get("/", async (req, res) => {
   try {
     let branding = await db.select().from(brandingTable).limit(1);
     if (branding.length === 0) {
-      const [created] = await db.insert(brandingTable).values({
-        companyName: "Toyo Kambocha",
-        primaryColor: "#1e40af",
-        accentColor: "#d97706",
-        theme: "light",
-        tagline: "Empowering People, Driving Growth",
-      }).returning();
+      const [created] = await db
+        .insert(brandingTable)
+        .values({
+          companyName: "Toyo Kambocha",
+          primaryColor: "#1e40af",
+          accentColor: "#d97706",
+          theme: "light",
+          tagline: "Empowering People, Driving Growth",
+        })
+        .returning();
       branding = [created];
     }
-    res.json({ ...branding[0], updatedAt: branding[0].updatedAt.toISOString() });
+    res.json({
+      ...branding[0],
+      updatedAt: branding[0].updatedAt.toISOString(),
+    });
   } catch (err) {
     req.log.error({ err }, "Get branding error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -27,22 +33,27 @@ router.get("/", async (req, res) => {
 
 router.put("/", async (req, res) => {
   try {
-    const { companyName, logoUrl, primaryColor, accentColor, theme, tagline } = req.body;
-    
+    const { companyName, logoUrl, primaryColor, accentColor, theme, tagline } =
+      req.body;
+
     let existing = await db.select().from(brandingTable).limit(1);
-    
+
     if (existing.length === 0) {
-      const [created] = await db.insert(brandingTable).values({
-        companyName: companyName || "Toyo Kambocha",
-        logoUrl: logoUrl || null,
-        primaryColor: primaryColor || "#1e40af",
-        accentColor: accentColor || "#d97706",
-        theme: theme || "light",
-        tagline: tagline || null,
-      }).returning();
+      const [created] = await db
+        .insert(brandingTable)
+        .values({
+          companyName: companyName || "Toyo Kambocha",
+          logoUrl: logoUrl || null,
+          primaryColor: primaryColor || "#1e40af",
+          accentColor: accentColor || "#d97706",
+          theme: theme || "light",
+          tagline: tagline || null,
+        })
+        .returning();
       res.json({ ...created, updatedAt: created.updatedAt.toISOString() });
     } else {
-      const [updated] = await db.update(brandingTable)
+      const [updated] = await db
+        .update(brandingTable)
         .set({
           ...(companyName !== undefined && { companyName }),
           ...(logoUrl !== undefined && { logoUrl: logoUrl || null }),

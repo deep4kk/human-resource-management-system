@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
       .from(departmentsTable)
       .orderBy(departmentsTable.name);
 
-    const deptIds = departments.map(d => d.id);
+    const deptIds = departments.map((d) => d.id);
     const counts: Record<number, number> = {};
     if (deptIds.length > 0) {
       for (const did of deptIds) {
@@ -33,12 +33,16 @@ router.get("/", async (req, res) => {
     }
 
     // Get head names
-    const headIds = departments.filter(d => d.headId).map(d => d.headId!);
+    const headIds = departments.filter((d) => d.headId).map((d) => d.headId!);
     const heads: Record<number, string> = {};
     if (headIds.length > 0) {
       for (const hid of headIds) {
         const h = await db
-          .select({ id: employeesTable.id, firstName: employeesTable.firstName, lastName: employeesTable.lastName })
+          .select({
+            id: employeesTable.id,
+            firstName: employeesTable.firstName,
+            lastName: employeesTable.lastName,
+          })
           .from(employeesTable)
           .where(eq(employeesTable.id, hid))
           .limit(1);
@@ -46,12 +50,14 @@ router.get("/", async (req, res) => {
       }
     }
 
-    res.json(departments.map(d => ({
-      ...d,
-      employeeCount: counts[d.id] || 0,
-      headName: d.headId ? heads[d.headId] || null : null,
-      createdAt: d.createdAt.toISOString(),
-    })));
+    res.json(
+      departments.map((d) => ({
+        ...d,
+        employeeCount: counts[d.id] || 0,
+        headName: d.headId ? heads[d.headId] || null : null,
+        createdAt: d.createdAt.toISOString(),
+      })),
+    );
   } catch (err) {
     req.log.error({ err }, "List departments error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -61,12 +67,22 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const { name, description, headId } = req.body;
-    const [dept] = await db.insert(departmentsTable).values({
-      name,
-      description: description || null,
-      headId: headId || null,
-    }).returning();
-    res.status(201).json({ ...dept, employeeCount: 0, headName: null, createdAt: dept.createdAt.toISOString() });
+    const [dept] = await db
+      .insert(departmentsTable)
+      .values({
+        name,
+        description: description || null,
+        headId: headId || null,
+      })
+      .returning();
+    res
+      .status(201)
+      .json({
+        ...dept,
+        employeeCount: 0,
+        headName: null,
+        createdAt: dept.createdAt.toISOString(),
+      });
   } catch (err) {
     req.log.error({ err }, "Create department error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -77,12 +93,26 @@ router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { name, description, headId } = req.body;
-    const [updated] = await db.update(departmentsTable)
-      .set({ name, description: description || null, headId: headId || null, updatedAt: new Date() })
+    const [updated] = await db
+      .update(departmentsTable)
+      .set({
+        name,
+        description: description || null,
+        headId: headId || null,
+        updatedAt: new Date(),
+      })
       .where(eq(departmentsTable.id, id))
       .returning();
-    if (!updated) { res.status(404).json({ error: "Not Found" }); return; }
-    res.json({ ...updated, employeeCount: 0, headName: null, createdAt: updated.createdAt.toISOString() });
+    if (!updated) {
+      res.status(404).json({ error: "Not Found" });
+      return;
+    }
+    res.json({
+      ...updated,
+      employeeCount: 0,
+      headName: null,
+      createdAt: updated.createdAt.toISOString(),
+    });
   } catch (err) {
     req.log.error({ err }, "Update department error");
     res.status(500).json({ error: "Internal Server Error" });

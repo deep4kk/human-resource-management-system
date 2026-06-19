@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { employeesTable, attendanceTable, leaveRequestsTable, payrollTable, timesheetsTable, departmentsTable } from "@workspace/db/schema";
+import {
+  employeesTable,
+  attendanceTable,
+  leaveRequestsTable,
+  payrollTable,
+  timesheetsTable,
+  departmentsTable,
+} from "@workspace/db/schema";
 import { eq, sql, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 
@@ -29,20 +36,58 @@ router.get("/stats", async (req, res) => {
       deptResult,
     ] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(employeesTable),
-      db.select({ count: sql<number>`count(*)` }).from(employeesTable).where(eq(employeesTable.status, "active")),
-      db.select({ count: sql<number>`count(*)` }).from(employeesTable).where(eq(employeesTable.status, "on_leave")),
-      db.select({ count: sql<number>`count(*)` }).from(employeesTable).where(gte(employeesTable.joinDate, thirtyDaysAgo.toISOString().split("T")[0])),
-      db.select({ status: attendanceTable.status, count: sql<number>`count(*)` }).from(attendanceTable).where(eq(attendanceTable.date, today)).groupBy(attendanceTable.status),
-      db.select({ count: sql<number>`count(*)` }).from(leaveRequestsTable).where(eq(leaveRequestsTable.status, "pending")),
-      db.select({ count: sql<number>`count(*)` }).from(timesheetsTable).where(eq(timesheetsTable.status, "pending")),
-      db.select({ total: sql<number>`sum(net_salary)` }).from(payrollTable).where(and(eq(payrollTable.month, new Date().getMonth() + 1), eq(payrollTable.year, new Date().getFullYear()))),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(employeesTable)
+        .where(eq(employeesTable.status, "active")),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(employeesTable)
+        .where(eq(employeesTable.status, "on_leave")),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(employeesTable)
+        .where(
+          gte(
+            employeesTable.joinDate,
+            thirtyDaysAgo.toISOString().split("T")[0],
+          ),
+        ),
+      db
+        .select({
+          status: attendanceTable.status,
+          count: sql<number>`count(*)`,
+        })
+        .from(attendanceTable)
+        .where(eq(attendanceTable.date, today))
+        .groupBy(attendanceTable.status),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(leaveRequestsTable)
+        .where(eq(leaveRequestsTable.status, "pending")),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(timesheetsTable)
+        .where(eq(timesheetsTable.status, "pending")),
+      db
+        .select({ total: sql<number>`sum(net_salary)` })
+        .from(payrollTable)
+        .where(
+          and(
+            eq(payrollTable.month, new Date().getMonth() + 1),
+            eq(payrollTable.year, new Date().getFullYear()),
+          ),
+        ),
       db.select({ count: sql<number>`count(*)` }).from(departmentsTable),
     ]);
 
-    const attendanceCounts = todayAttResult.reduce((acc, r) => {
-      acc[r.status] = Number(r.count);
-      return acc;
-    }, {} as Record<string, number>);
+    const attendanceCounts = todayAttResult.reduce(
+      (acc, r) => {
+        acc[r.status] = Number(r.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     res.json({
       totalEmployees: Number(totalEmpResult[0]?.count || 0),
@@ -74,14 +119,25 @@ router.get("/charts", async (req, res) => {
       const lastDay = getLastDayOfMonth(y, m);
       const start = `${y}-${String(m).padStart(2, "0")}-01`;
       const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      
+
       const counts = await db
-        .select({ status: attendanceTable.status, count: sql<number>`count(*)` })
+        .select({
+          status: attendanceTable.status,
+          count: sql<number>`count(*)`,
+        })
         .from(attendanceTable)
-        .where(and(gte(attendanceTable.date, start), lte(attendanceTable.date, end)))
+        .where(
+          and(gte(attendanceTable.date, start), lte(attendanceTable.date, end)),
+        )
         .groupBy(attendanceTable.status);
-      
-      const byStatus = counts.reduce((acc, c) => { acc[c.status] = Number(c.count); return acc; }, {} as Record<string, number>);
+
+      const byStatus = counts.reduce(
+        (acc, c) => {
+          acc[c.status] = Number(c.count);
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       attendanceTrend.push({
         month: monthStr,
         present: byStatus["present"] || 0,
@@ -96,10 +152,16 @@ router.get("/charts", async (req, res) => {
         count: sql<number>`count(${employeesTable.id})`,
       })
       .from(departmentsTable)
-      .leftJoin(employeesTable, eq(employeesTable.departmentId, departmentsTable.id))
+      .leftJoin(
+        employeesTable,
+        eq(employeesTable.departmentId, departmentsTable.id),
+      )
       .groupBy(departmentsTable.name);
 
-    const departmentDistribution = depts.map(d => ({ department: d.name, count: Number(d.count) }));
+    const departmentDistribution = depts.map((d) => ({
+      department: d.name,
+      count: Number(d.count),
+    }));
 
     const payrollTrend = [];
     for (let i = 5; i >= 0; i--) {
@@ -108,22 +170,36 @@ router.get("/charts", async (req, res) => {
       const m = d.getMonth() + 1;
       const y = d.getFullYear();
       const monthStr = d.toLocaleString("default", { month: "short" });
-      
+
       const result = await db
         .select({ total: sql<number>`sum(net_salary)` })
         .from(payrollTable)
         .where(and(eq(payrollTable.month, m), eq(payrollTable.year, y)));
-      
-      payrollTrend.push({ month: monthStr, amount: Number(result[0]?.total || 0) });
+
+      payrollTrend.push({
+        month: monthStr,
+        amount: Number(result[0]?.total || 0),
+      });
     }
 
     const leaves = await db
-      .select({ type: leaveRequestsTable.leaveType, count: sql<number>`count(*)` })
+      .select({
+        type: leaveRequestsTable.leaveType,
+        count: sql<number>`count(*)`,
+      })
       .from(leaveRequestsTable)
       .groupBy(leaveRequestsTable.leaveType);
-    const leaveByType = leaves.map(l => ({ type: l.type, count: Number(l.count) }));
+    const leaveByType = leaves.map((l) => ({
+      type: l.type,
+      count: Number(l.count),
+    }));
 
-    res.json({ attendanceTrend, departmentDistribution, payrollTrend, leaveByType });
+    res.json({
+      attendanceTrend,
+      departmentDistribution,
+      payrollTrend,
+      leaveByType,
+    });
   } catch (err) {
     req.log.error({ err }, "Dashboard charts error");
     res.status(500).json({ error: "Internal Server Error" });

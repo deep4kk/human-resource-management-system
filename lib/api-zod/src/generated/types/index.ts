@@ -49,7 +49,7 @@ export * from "./listLeavesParams";
 export * from "./listPayrollParams";
 export * from "./listTimesheetsParams";
 export * from "./loginRequest";
-export * from "./loginResponse";
+// Note: loginResponse is exported from api.ts to avoid duplicate export
 export * from "./payrollRecord";
 export * from "./payrollRecordStatus";
 export * from "./payslip";
