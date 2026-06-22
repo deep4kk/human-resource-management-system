@@ -104,19 +104,21 @@ pnpm run db:seed
 
 ## Step 6: Start the Services
 
+> **Port Configuration**: API on **5001**, Frontend on **3001**
+
 ### Option A: PM2 (Recommended for existing apps)
 
 ```bash
 # Install PM2 if not already installed
 npm install -g pm2
 
-# Start API server
+# Start API server (port 5001)
 cd ~/apps/hrms/server
-pm2 start pnpm --name "hrms-api" -- start
+PORT=5001 pm2 start pnpm --name "hrms-api" -- start
 
-# Start Frontend (using vite preview)
+# Start Frontend (port 3001)
 cd ~/apps/hrms/frontend
-pm2 start pnpm --name "hrms-web" -- serve
+PORT=3001 pm2 start pnpm --name "hrms-web" -- serve
 ```
 
 ### Option B: Systemd Services
@@ -135,6 +137,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/apps/hrms/server
+Environment=PORT=5001
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/pnpm run start
 Restart=always
@@ -157,6 +160,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/apps/hrms/frontend
+Environment=PORT=3001
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/pnpm run serve
 Restart=always
@@ -179,24 +183,16 @@ sudo systemctl start hrms-web
 
 ## Step 7: Configure Nginx
 
-Add the following to your existing Nginx configuration. First, check your current Nginx setup:
+Create a separate Nginx config file for HRMS (doesn't touch your existing configs):
 
 ```bash
-# Check existing Nginx config location
-ls -la /etc/nginx/sites-enabled/
-cat /etc/nginx/nginx.conf | grep include
-```
-
-Add the HRMS routes to your existing config or create a separate file:
-
-```bash
-sudo nano /etc/nginx/sites-enabled/hrms
+sudo nano /etc/nginx/sites-available/hrms
 ```
 
 ```nginx
-# HRMS API (runs on port 3000)
+# HRMS API (runs on port 5001)
 upstream hrms_api {
-    server 127.0.0.1:3000;
+    server 127.0.0.1:5001;
     keepalive 32;
 }
 
@@ -256,6 +252,9 @@ server {
 ```
 
 ```bash
+# Enable the site (creates symlink)
+sudo ln -sf /etc/nginx/sites-available/hrms /etc/nginx/sites-enabled/hrms
+
 # Test and reload Nginx
 sudo nginx -t
 sudo systemctl reload nginx
@@ -291,10 +290,10 @@ sudo systemctl status hrms-web
 # Or with PM2
 pm2 list
 
-# Test API
-curl http://localhost:3000/health
+# Test API (port 5001)
+curl http://localhost:5001/health
 
-# Test frontend
+# Test frontend (port 3001)
 curl http://localhost:3001
 ```
 
