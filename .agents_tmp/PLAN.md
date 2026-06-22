@@ -1,6 +1,54 @@
 # 1. OBJECTIVE
 
-Migrate the Toyo Kambocha HRMS application from Replit to a production-ready hosting environment. Provide a clear hosting process guide and identify key improvements to make the application more robust, secure, and scalable.
+Restructure the HRMS project and deploy to AWS EC2 with:
+- **Frontend:** `hrms.flowmative.in` (React SPA, port 3001)
+- **Backend API:** `hrserver.flowmative.in` (Express.js, port 3000)
+- **Database:** PostgreSQL on same EC2 or external
+- Clean project structure without Replit-specific artifacts (`artifacts/`, `scripts/`, etc.)
+- Production-ready with Nginx reverse proxy, SSL (Let's Encrypt), systemd services
+
+---
+
+## ANALYSIS SUMMARY
+
+### Items to DELETE:
+| Item | Reason |
+|------|--------|
+| `artifacts/mockup-sandbox/` | Replit sandbox - not used in production |
+| `scripts/` | Only has "hello.ts" - completely useless |
+| `replit.md` | Replit-specific documentation |
+| Replit vite plugins | `@replit/vite-plugin-cartographer`, `@replit/vite-plugin-dev-banner`, `@replit/vite-plugin-runtime-error-modal` |
+
+### Items to KEEP:
+| Item | Purpose |
+|------|---------|
+| `lib/db/` | Database schema (Drizzle ORM) |
+| `lib/api-zod/` | Zod validation schemas |
+| `lib/api-client-react/` | React Query hooks (generated) |
+| `lib/api-spec/` | OpenAPI spec + Orval config |
+| `docker-compose.yml` | Local PostgreSQL setup |
+| `attached_assets/` | Project assets |
+
+### New Structure:
+```
+hrms/
+├── server/              # API server (moved from artifacts/api-server)
+├── frontend/            # React frontend (moved from artifacts/hrms)
+├── packages/
+│   ├── db/             # Database schema (moved from lib/db)
+│   ├── api-zod/        # Zod schemas (moved from lib/api-zod)
+│   └── api-client/     # React hooks (moved from lib/api-client-react)
+├── deploy/              # AWS deployment scripts
+│   ├── nginx/           # Nginx subdomain config
+│   ├── setup-server.sh  # Initial server setup
+│   ├── setup-ssl.sh     # SSL certificate setup
+│   └── deploy.sh        # Deployment automation
+├── docker-compose.yml    # Local development PostgreSQL
+├── .env.example         # Environment template
+├── README.md            # Project documentation
+├── HOSTING.md           # AWS deployment guide
+└── LOCAL_DEV.md         # Development guide
+```
 
 ---
 
@@ -33,17 +81,41 @@ Migrate the Toyo Kambocha HRMS application from Replit to a production-ready hos
 
 # 3. APPROACH OVERVIEW
 
-**Recommended Hosting Stack:**
-1. **Frontend:** Vercel (best for React/Vite) or Render
-2. **Backend:** Railway, Render, or Fly.io (Node.js support)
-3. **Database:** Supabase, Neon, or Railway PostgreSQL
+**AWS EC2 Architecture:**
+```
+                    ┌─────────────────────────────────────────┐
+                    │           AWS EC2 Instance             │
+                    │         (Ubuntu 22.04 LTS)             │
+                    │                                         │
+  ┌──────────────┐ │  ┌─────────────┐    ┌────────────────┐ │
+  │   Internet   │ │  │   Nginx     │    │  PostgreSQL    │ │
+  │              │◄┼──│ (Reverse    │    │  (Port 5432)   │ │
+  └──────────────┘ │  │  Proxy)     │    └────────────────┘ │
+                   │  │             │                       │
+  ┌──────────────┐ │  │ :443 (SSL)  │    ┌────────────────┐ │
+  │ hrms.flow... │◄┼──│ ├─:3001 Web │    │   Services     │ │
+  │              │ │  │ └─:3000 API│    │ - PM2          │ │
+  └──────────────┘ │  └─────────────┘    │ - hrms-api     │ │
+                   │                      │ - hrms-web     │ │
+  ┌──────────────┐ │                      └────────────────┘ │
+  │hrserver.fl..│◄┼──│                        │            │
+  │              │ │  │                        ▼            │
+  └──────────────┘ │  │         ┌─────────────────────┐   │
+                   │  │         │  Backend (Port 3000) │   │
+                   │  │         │  Frontend (Port 3001)│   │
+                   │  │         └─────────────────────┘   │
+                   │                                        │
+                   └────────────────────────────────────────┘
+```
 
 **Key Changes Required:**
-1. Remove Replit-specific dependencies and plugins
-2. Add production-ready configuration files
-3. Set up environment variable management
-4. Configure CORS for production domain
-5. Add health check and readiness endpoints
+1. Restructure project (remove artifacts/, scripts/, replit.md)
+2. Remove Replit-specific dependencies and plugins
+3. Update all import paths (@workspace/* → @hrms/*)
+4. Create Nginx configuration for subdomain routing
+5. Create systemd service files for auto-restart
+6. Create deployment and SSL setup scripts
+7. Update documentation for new structure (server/, frontend/, packages/)
 
 ---
 
@@ -104,81 +176,153 @@ Migrate the Toyo Kambocha HRMS application from Replit to a production-ready hos
   - `artifacts/api-server/package.json` - Add migration scripts
   - `lib/db/drizzle.config.ts` - Ensure compatible with production
 
-## Phase 3: Hosting Deployment
+## Phase 3: AWS EC2 Deployment Files
 
-### Step 7: Deploy Backend API
-- **Goal:** Deploy Express API to a Node.js hosting platform
-- **Method:** 
-  - Option A: Railway (recommended for ease)
-  - Option B: Render (good free tier)
-  - Option C: Fly.io (good for global distribution)
-- **Actions:**
-  - Push code to GitHub
-  - Connect repo to hosting platform
-  - Set environment variables (DATABASE_URL, JWT_SECRET, PORT=3000)
-  - Deploy
+### Step 7: Create Nginx Configuration
+- **Goal:** Configure subdomain routing with SSL
+- **Files to create:**
+  - `deploy/nginx/hrms.conf` - Nginx config for both subdomains
+  - `deploy/setup-ssl.sh` - SSL certificate setup script
 
-### Step 8: Deploy Frontend
-- **Goal:** Deploy React frontend to CDN-based hosting
+### Step 8: Create Systemd Service Files
+- **Goal:** Auto-restart services on failure
+- **Files to create:**
+  - `server/hrms-api.service` - API server systemd service
+  - `frontend/hrms-web.service` - Frontend systemd service
+
+### Step 9: Create Deployment Scripts
+- **Goal:** Automate deployment process
+- **Files to create:**
+  - `deploy/setup-server.sh` - Initial server setup (Node.js, Nginx, PostgreSQL)
+  - `deploy/deploy.sh` - Deployment script (pull, build, restart)
+
+## Phase 4: Documentation Updates
+
+### Step 10: Update Documentation
+- **Goal:** Update all docs for new project structure
+- **Files to update:**
+  - `HOSTING.md` - Complete rewrite for AWS EC2 deployment
+  - `LOCAL_DEV.md` - Update for new directory structure (server/, frontend/, packages/)
+  - `replit.md` - DELETE (Replit-specific)
+
+### Step 11: Create New Documentation
+- **Goal:** Add proper documentation
+- **Files to create:**
+  - `README.md` - Project overview, quick start, tech stack
+
+## Phase 5: AWS EC2 Setup (On Server)
+
+### Step 12: Initial Server Setup
+- **Goal:** Configure fresh AWS EC2 instance
+- **Method:** Run `deploy/setup-server.sh` which installs:
+  - Node.js 20.x
+  - pnpm
+  - Nginx
+  - PostgreSQL
+  - PM2
+
+### Step 13: Deploy Application
+- **Goal:** Deploy to AWS EC2
+- **Method:** Run `deploy/deploy.sh` which:
+  - Pulls latest code from Git
+  - Installs dependencies
+  - Builds frontend & backend
+  - Restarts systemd services
+
+### Step 14: Configure DNS & SSL
+- **Goal:** Point domains and enable HTTPS
 - **Method:**
-  - Option A: Vercel (recommended, best for React/Vite)
-  - Option B: Netlify
-- **Actions:**
-  - Connect same GitHub repo or separate frontend repo
-  - Set build command: `pnpm run build`
-  - Set output directory: `artifacts/hrms/dist/public`
-  - Set environment variable: `VITE_API_URL=https://your-api-domain.com`
-  - Set environment variable: `BASE_PATH=/`
+  - Create DNS A records for both subdomains
+  - Run `deploy/setup-ssl.sh` for Let's Encrypt certificates
 
-## Phase 4: Post-Deployment Configuration
-
-### Step 9: Configure Environment Variables
-- **Goal:** Set up all required environment variables for both services
-- **Method:** Configure in hosting platform dashboard or `.env` files
-- **Required Variables:**
-  - `DATABASE_URL` - PostgreSQL connection string
-  - `JWT_SECRET` - Secret for signing JWT tokens (min 32 characters)
-  - `PORT` - API server port (e.g., 3000)
-  - `NODE_ENV` - Set to "production"
-  - `CORS_ORIGINS` - Allowed frontend domains (comma-separated)
-
-### Step 10: Test the Deployment
-- **Goal:** Verify the complete application works in production
+### Step 15: Verify Deployment
+- **Goal:** Confirm everything works
 - **Method:**
-  - Test login with demo accounts
-  - Test employee CRUD operations
-  - Test dashboard loads
-  - Test mobile responsiveness
+  - Test `https://hrms.flowmative.in`
+  - Test `https://hrserver.flowmative.in/health`
+  - Login with demo accounts
 
 ---
 
-# 5. TESTING AND VALIDATION
+# 5. DNS CONFIGURATION
 
-**Success Criteria:**
-1. ✅ Frontend builds without errors
-2. ✅ Backend API starts successfully
-3. ✅ Database migrations run without errors
-4. ✅ CORS is properly configured for production domain
-5. ✅ All 4 demo accounts can log in (admin, hr, employee, manager)
-6. ✅ Dashboard loads with stats and charts
-7. ✅ Employee management CRUD works
-8. ✅ Mobile responsive layout functions correctly
+Create these DNS records in your domain provider:
 
-**Verification Commands:**
-```bash
-# Build frontend
-cd artifacts/hrms && pnpm run build
-
-# Build backend
-cd artifacts/api-server && pnpm run build
-
-# Test API health
-curl https://your-api-domain.com/api/health
-```
+| Type | Name | Value | Purpose |
+|------|------|-------|---------|
+| A | hrms | your-ec2-public-ip | Frontend subdomain |
+| A | hrserver | your-ec2-public-ip | Backend subdomain |
 
 ---
 
-# 6. IMPROVEMENT RECOMMENDATIONS
+# 6. FILES TO CREATE/MODIFY SUMMARY
+
+## Create:
+- `deploy/nginx/hrms.conf` - Nginx subdomain routing
+- `deploy/setup-server.sh` - Initial server setup
+- `deploy/setup-ssl.sh` - SSL certificate setup
+- `deploy/deploy.sh` - Deployment script
+- `server/hrms-api.service` - systemd service
+- `frontend/hrms-web.service` - systemd service
+- `README.md` - Project documentation
+
+## Delete:
+- `artifacts/mockup-sandbox/` - Replit sandbox
+- `scripts/` - Useless directory
+- `replit.md` - Replit-specific docs
+- `lib/` - Will be moved to packages/
+- `artifacts/` - Will be restructured
+
+## Move & Rename:
+- `artifacts/api-server/` → `server/`
+- `artifacts/hrms/` → `frontend/`
+- `lib/db/` → `packages/db/`
+- `lib/api-zod/` → `packages/api-zod/`
+- `lib/api-client-react/` → `packages/api-client/`
+- `lib/api-spec/` → `packages/api-spec/`
+
+## Update:
+- `pnpm-workspace.yaml` - New structure
+- `pnpm-lock.yaml` - Regenerated
+- All `package.json` - Update workspace refs
+- All import paths - `@workspace/*` → `@hrms/*`
+- `server/src/app.ts` - CORS config
+- `server/src/index.ts` - Production ready
+- `frontend/vite.config.ts` - Remove Replit plugins
+- `HOSTING.md` - AWS EC2 guide
+- `LOCAL_DEV.md` - New structure docs
+
+---
+
+# 7. DEPLOYMENT CHECKLIST
+
+## Pre-Deployment:
+- [ ] Restructure project (Phase 1)
+- [ ] Update configs (Phase 2)
+- [ ] Create deployment files (Phase 3)
+- [ ] Update documentation (Phase 4)
+- [ ] Test builds locally
+
+## On AWS EC2:
+- [ ] Run setup-server.sh
+- [ ] Upload code to /opt/hrms
+- [ ] Configure PostgreSQL database
+- [ ] Create .env file
+- [ ] Install dependencies & build
+- [ ] Install systemd services
+- [ ] Configure Nginx
+- [ ] Setup SSL
+- [ ] Configure DNS records
+
+## Post-Deployment:
+- [ ] Run database migrations
+- [ ] Seed demo data
+- [ ] Verify both subdomains
+- [ ] Test login functionality
+
+---
+
+# 8. POST-DEPLOYMENT IMPROVEMENTS
 
 ## High Priority Improvements
 

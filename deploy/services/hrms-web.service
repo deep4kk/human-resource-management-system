@@ -1,0 +1,32 @@
+[Unit]
+Description=HRMS Web Frontend
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/hrms/frontend
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/hrms/frontend/.env
+
+# Build and start preview server
+ExecStartPre=/usr/bin/pnpm install --frozen-lockfile
+ExecStartPre=/usr/bin/pnpm run build
+ExecStart=/usr/bin/pnpm run serve
+
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hrms-web
+
+# Limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

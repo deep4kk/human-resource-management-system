@@ -46,10 +46,10 @@ CREATE DATABASE hrms;
 Create the backend `.env` file:
 
 ```bash
-cp artifacts/api-server/.env.example artifacts/api-server/.env
+cp server/.env.example server/.env
 ```
 
-Edit `artifacts/api-server/.env`:
+Edit `server/.env`:
 ```env
 DATABASE_URL=postgresql://your-user:your-password@localhost:5432/hrms
 JWT_SECRET=your-super-secret-key-at-least-32-characters-long
@@ -61,10 +61,10 @@ CORS_ORIGINS=http://localhost:5173
 Create the frontend `.env` file:
 
 ```bash
-cp artifacts/hrms/.env.example artifacts/hrms/.env
+cp frontend/.env.example frontend/.env
 ```
 
-Edit `artifacts/hrms/.env`:
+Edit `frontend/.env`:
 ```env
 VITE_API_URL=http://localhost:3000
 BASE_PATH=/
@@ -75,7 +75,7 @@ BASE_PATH=/
 Push the database schema:
 
 ```bash
-cd artifacts/api-server
+cd server
 pnpm run db:push
 ```
 
@@ -84,7 +84,7 @@ pnpm run db:push
 Run the seed script to create demo users and sample data:
 
 ```bash
-cd artifacts/api-server
+cd server
 pnpm run db:seed
 ```
 
@@ -92,13 +92,13 @@ pnpm run db:seed
 
 In one terminal, start the backend:
 ```bash
-cd artifacts/api-server
+cd server
 pnpm run dev
 ```
 
 In another terminal, start the frontend:
 ```bash
-cd artifacts/hrms
+cd frontend
 pnpm run dev
 ```
 
@@ -127,27 +127,30 @@ After seeding, you can log in with these accounts:
 
 ```
 human-resource-management-system/
-├── artifacts/
-│   ├── api-server/         # Express.js backend
-│   │   ├── src/
-│   │   │   ├── index.ts    # Entry point
-│   │   │   ├── app.ts      # Express app setup
-│   │   │   ├── routes/     # API routes
-│   │   │   └── lib/         # Auth, utils
-│   │   ├── .env.example    # Environment template
-│   │   └── package.json
-│   └── hrms/               # React frontend
-│       ├── src/
-│       │   ├── pages/       # Page components
-│       │   ├── components/  # UI components
-│       │   └── hooks/       # Custom hooks
-│       ├── .env.example     # Environment template
-│       └── package.json
-├── lib/                    # Shared libraries
-│   ├── db/                 # Drizzle ORM schema
+├── server/                # Express.js API server
+│   ├── src/
+│   │   ├── index.ts       # Entry point
+│   │   ├── app.ts         # Express app setup
+│   │   ├── routes/        # API routes
+│   │   └── lib/           # Auth, utils
+│   ├── .env.example       # Environment template
+│   └── package.json
+├── frontend/              # React frontend (Vite)
+│   ├── src/
+│   │   ├── pages/         # Page components
+│   │   ├── components/    # UI components
+│   │   └── hooks/         # Custom hooks
+│   ├── .env.example       # Environment template
+│   └── package.json
+├── packages/              # Shared packages
+│   ├── db/                # Database schema (Drizzle ORM)
 │   ├── api-zod/           # Zod validation schemas
-│   └── api-client-react/  # React Query hooks
-└── scripts/                # Utility scripts
+│   └── api-client/        # React Query hooks
+└── deploy/                # Deployment scripts
+    ├── nginx/             # Nginx configuration
+    ├── services/          # Systemd service files
+    ├── setup-server.sh    # Initial server setup
+    └── deploy.sh          # Deployment automation
 ```
 
 ---
@@ -161,10 +164,10 @@ human-resource-management-system/
 pnpm run build
 
 # Build only backend
-cd artifacts/api-server && pnpm run build
+cd server && pnpm run build
 
 # Build only frontend
-cd artifacts/hrms && pnpm run build
+cd frontend && pnpm run build
 ```
 
 ### Type Checking
@@ -176,7 +179,7 @@ pnpm run typecheck
 ### Database Operations
 
 ```bash
-cd artifacts/api-server
+cd server
 
 # Push schema to database (creates/updates tables)
 pnpm run db:push
@@ -203,10 +206,10 @@ pnpm run db:check
 
 ### "DATABASE_URL must be set"
 
-Make sure you created the `.env` file in `artifacts/api-server/`:
+Make sure you created the `.env` file in `server/`:
 
 ```bash
-cp artifacts/api-server/.env.example artifacts/api-server/.env
+cp server/.env.example server/.env
 # Then edit it with your database URL
 ```
 

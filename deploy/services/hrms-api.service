@@ -1,0 +1,32 @@
+[Unit]
+Description=HRMS API Server
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/hrms/server
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/hrms/server/.env
+
+# Build and start
+ExecStartPre=/usr/bin/pnpm install --frozen-lockfile
+ExecStartPre=/usr/bin/pnpm run build
+ExecStart=/usr/bin/pnpm run start
+
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hrms-api
+
+# Limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

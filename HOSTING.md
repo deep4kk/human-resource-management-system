@@ -4,10 +4,27 @@ This guide provides step-by-step instructions for deploying the HRMS application
 
 ## Prerequisites
 
-- Node.js 18+ installed locally
+- Node.js 20+ installed locally
 - pnpm package manager (`npm install -g pnpm`)
 - Git repository for your project
 - PostgreSQL 14+ database (or use a cloud provider)
+
+---
+
+## Project Structure
+
+```
+hrms/
+├── server/              # API server (Express.js)
+├── frontend/            # React frontend (Vite)
+├── packages/
+│   ├── db/            # Database schema (Drizzle ORM)
+│   ├── api-zod/       # Zod validation schemas
+│   └── api-client/    # React Query hooks
+├── deploy/             # AWS deployment scripts
+├── docker-compose.yml  # Local PostgreSQL
+└── .env.example       # Environment template
+```
 
 ---
 
@@ -16,8 +33,8 @@ This guide provides step-by-step instructions for deploying the HRMS application
 | Service | Purpose | Recommended Provider |
 |---------|---------|---------------------|
 | **Frontend** | React/Vite static hosting | Vercel (recommended) |
-| **Backend** | Express.js API server | Railway, Render, or Fly.io |
-| **Database** | PostgreSQL | Supabase, Neon, or Railway |
+| **Backend** | Express.js API server | Railway, Render, or AWS EC2 |
+| **Database** | PostgreSQL | Supabase, Neon, or AWS RDS |
 
 ---
 
@@ -27,9 +44,9 @@ For a quick production deployment:
 
 1. Clone repo: `git clone https://github.com/deep4kk/human-resource-management-system.git`
 2. Install deps: `pnpm install`
-3. Configure env files: `cp artifacts/api-server/.env.example artifacts/api-server/.env`
-4. Set up database and run migrations: `cd artifacts/api-server && pnpm run db:push && pnpm run db:seed`
-5. Deploy backend to Railway/Render/Fly.io
+3. Configure env files: `cp server/.env.example server/.env`
+4. Set up database and run migrations: `cd server && pnpm run db:push && pnpm run db:seed`
+5. Deploy backend to Railway/Render/AWS EC2
 6. Deploy frontend to Vercel/Netlify
 
 ---
@@ -48,12 +65,12 @@ pnpm install
 
 Create environment files based on the examples:
 
-**Backend (`artifacts/api-server/.env`):**
+**Backend (`server/.env`):**
 ```bash
-cp artifacts/api-server/.env.example artifacts/api-server/.env
+cp server/.env.example server/.env
 ```
 
-Edit `artifacts/api-server/.env` with your production values:
+Edit `server/.env` with your production values:
 ```env
 DATABASE_URL=postgresql://user:password@host:5432/database
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
@@ -62,12 +79,12 @@ NODE_ENV=production
 CORS_ORIGINS=https://your-frontend.vercel.app
 ```
 
-**Frontend (`artifacts/hrms/.env`):**
+**Frontend (`frontend/.env`):**
 ```bash
-cp artifacts/hrms/.env.example artifacts/hrms/.env
+cp frontend/.env.example frontend/.env
 ```
 
-Edit `artifacts/hrms/.env` with your production values:
+Edit `frontend/.env` with your production values:
 ```env
 VITE_API_URL=https://your-api-domain.com
 BASE_PATH=/
@@ -102,7 +119,7 @@ BASE_PATH=/
 Once your database is set up:
 
 ```bash
-cd artifacts/api-server
+cd server
 
 # Push schema to database (creates/updates tables)
 pnpm run db:push
@@ -120,7 +137,7 @@ pnpm run db:seed
 1. Push your code to GitHub
 2. Go to [railway.app](https://railway.app) and create new project
 3. Connect your GitHub repository
-4. Select the `artifacts/api-server` directory as the root
+4. Select the `server` directory as the root
 5. Add environment variables:
    - `DATABASE_URL` - Your PostgreSQL connection string
    - `JWT_SECRET` - Your JWT secret key
@@ -135,7 +152,7 @@ pnpm run db:seed
 2. Go to [render.com](https://render.com) and create new Web Service
 3. Connect your GitHub repository
 4. Configure:
-   - **Root Directory:** `artifacts/api-server`
+   - **Root Directory:** `server`
    - **Build Command:** `pnpm install && pnpm run build`
    - **Start Command:** `pnpm run start`
 5. Add environment variables (same as Railway)
@@ -145,7 +162,7 @@ pnpm run db:seed
 
 1. Install Fly CLI: `npm install -g fly`
 2. Login: `fly auth login`
-3. Create `fly.toml` in `artifacts/api-server/`:
+3. Create `fly.toml` in `server/`:
    ```toml
    app = "your-app-name"
    primary_region = "sin"
@@ -189,7 +206,7 @@ Expected response:
 2. Go to [vercel.com](https://vercel.com) and import project
 3. Configure:
    - **Framework Preset:** Vite
-   - **Root Directory:** `./artifacts/hrms`
+   - **Root Directory:** `./frontend`
    - **Build Command:** `pnpm run build`
    - **Output Directory:** `dist/public`
    - **Install Command:** `pnpm install`
@@ -204,7 +221,7 @@ Expected response:
 2. Go to [netlify.com](https://netlify.com)
 3. Import from Git > Select repository
 4. Configure:
-   - **Base directory:** `artifacts/hrms`
+   - **Base directory:** `frontend`
    - **Build command:** `pnpm run build`
    - **Publish directory:** `dist/public`
 5. Add environment variables
