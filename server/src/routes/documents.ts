@@ -158,7 +158,7 @@ router.post("/generate", adminOnly, async (req, res) => {
         month: "long",
         year: "numeric",
       }),
-      company_name: "Toyo Kambocha",
+      company_name: "Flowmative",
       ...variables,
     };
 

@@ -2,7 +2,7 @@
 
 Restructure the HRMS project and deploy to AWS EC2 with:
 - **Frontend:** `hrms.flowmative.in` (React SPA, port 3001)
-- **Backend API:** `hrserver.flowmative.in` (Express.js, port 3000)
+- **Backend API:** `hrserver.flowmative.in` (Express.js, port 5001)
 - **Database:** PostgreSQL on same EC2 or external
 - Clean project structure without Replit-specific artifacts (`artifacts/`, `scripts/`, etc.)
 - Production-ready with Nginx reverse proxy, SSL (Let's Encrypt), systemd services
@@ -55,7 +55,7 @@ hrms/
 # 2. CONTEXT SUMMARY
 
 **Project Overview:**
-- **Application:** Full-stack HRMS (Human Resource Management System) for Toyo Kambocha
+- **Application:** Full-stack HRMS (Human Resource Management System) for Flowmative
 - **Frontend:** React 19 + Vite 7 + TailwindCSS v4 + shadcn/ui with glassmorphism design
 - **Backend:** Express 5 API server with TypeScript
 - **Database:** PostgreSQL + Drizzle ORM
@@ -94,14 +94,14 @@ hrms/
                    │  │             │                       │
   ┌──────────────┐ │  │ :443 (SSL)  │    ┌────────────────┐ │
   │ hrms.flow... │◄┼──│ ├─:3001 Web │    │   Services     │ │
-  │              │ │  │ └─:3000 API│    │ - PM2          │ │
+  │              │ │  │ └─:5001 API│    │ - PM2          │ │
   └──────────────┘ │  └─────────────┘    │ - hrms-api     │ │
                    │                      │ - hrms-web     │ │
   ┌──────────────┐ │                      └────────────────┘ │
   │hrserver.fl..│◄┼──│                        │            │
   │              │ │  │                        ▼            │
   └──────────────┘ │  │         ┌─────────────────────┐   │
-                   │  │         │  Backend (Port 3000) │   │
+                   │  │         │  Backend (Port 5001) │   │
                    │  │         │  Frontend (Port 3001)│   │
                    │  │         └─────────────────────┘   │
                    │                                        │

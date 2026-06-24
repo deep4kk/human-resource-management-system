@@ -1,10 +1,10 @@
-# Toyo Kambocha HRMS - Production Hosting Guide
+# Flowmative HRMS - Production Hosting Guide
 
 This guide provides step-by-step instructions for deploying the HRMS application to production hosting environments.
 
 ## Prerequisites
 
-- Node.js 20+ installed locally
+- Node.js 22+ installed locally (uses `--env-file` flag)
 - pnpm package manager (`npm install -g pnpm`)
 - Git repository for your project
 - PostgreSQL 14+ database (or use a cloud provider)
@@ -74,9 +74,9 @@ Edit `server/.env` with your production values:
 ```env
 DATABASE_URL=postgresql://user:password@host:5432/database
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-PORT=3000
+PORT=5001
 NODE_ENV=production
-CORS_ORIGINS=https://your-frontend.vercel.app
+CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:3001
 ```
 
 **Frontend (`frontend/.env`):**
@@ -229,6 +229,18 @@ Expected response:
 
 ---
 
+## Password Hash Consistency
+
+The server and seed script use the same password hashing algorithm:
+
+- Algorithm: `SHA256`
+- Salt: `"hrms_salt_flowmative"` appended to the password before hashing
+- Output: lowercase hex string
+
+If you change the salt in `server/src/lib/auth.ts`, you **must** also update it in `packages/db/src/seed.ts` line 16 (`const SALT = "hrms_salt_flowmative"`), then re-seed the database. Otherwise seeded passwords won't match server verification (401 on login).
+
+---
+
 ## Phase 5: Post-Deployment Configuration
 
 ### Configure Environment Variables on Hosting Platforms
@@ -263,7 +275,7 @@ curl https://your-api-domain.com/health
 ```bash
 curl -X POST https://your-api-domain.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@toyo-kambocha.com","password":"admin123"}'
+  -d '{"email":"admin@flowmative.com","password":"admin123"}'
 ```
 
 ### 3. Frontend Test
@@ -276,10 +288,10 @@ Visit your frontend URL and:
 
 | Role | Email | Password |
 |------|-------|---------|
-| Admin | admin@toyo-kambocha.com | admin123 |
-| HR Manager | hr@toyo-kambocha.com | hr123 |
-| Employee | employee@toyo-kambocha.com | emp123 |
-| Manager | manager@toyo-kambocha.com | mgr123 |
+| Admin | admin@flowmative.com | admin123 |
+| HR Manager | hr@flowmative.com | hr123 |
+| Employee | employee@flowmative.com | emp123 |
+| Manager | manager@flowmative.com | mgr123 |
 
 ---
 
@@ -367,4 +379,4 @@ For issues or questions:
 ## Related Documentation
 
 - [Local Development Guide](./LOCAL_DEV.md) - For setting up development environment
-- [Main README](./replit.md) - Project overview and architecture
+- [Main README](./README.md) - Project overview and architecture

@@ -64,7 +64,7 @@ export default function Login() {
               <Sparkles className="w-5 h-5" />
             </div>
             <span className="font-display font-bold text-2xl tracking-tight">
-              Toyo Kambocha
+              Flowmative
             </span>
           </div>
 
@@ -94,7 +94,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full h-12 pl-12 pr-4 bg-background border-2 border-border rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
-                  placeholder="name@toyokambocha.com"
+                  placeholder="name@flowmative.com"
                 />
               </div>
             </div>
@@ -145,19 +145,19 @@ export default function Login() {
             </p>
             <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={() => setDemo("admin@toyokambocha.com", "admin123")}
+                onClick={() => setDemo("admin@flowmative.com", "admin123")}
                 className="py-2 px-2 rounded-lg bg-secondary hover:bg-secondary/80 text-xs font-medium border border-border/50 transition-colors"
               >
                 Admin
               </button>
               <button
-                onClick={() => setDemo("hr@toyokambocha.com", "hr123")}
+                onClick={() => setDemo("hr@flowmative.com", "hr123")}
                 className="py-2 px-2 rounded-lg bg-secondary hover:bg-secondary/80 text-xs font-medium border border-border/50 transition-colors"
               >
                 HR Mgr
               </button>
               <button
-                onClick={() => setDemo("emp@toyokambocha.com", "emp123")}
+                onClick={() => setDemo("emp@flowmative.com", "emp123")}
                 className="py-2 px-2 rounded-lg bg-secondary hover:bg-secondary/80 text-xs font-medium border border-border/50 transition-colors"
               >
                 Employee

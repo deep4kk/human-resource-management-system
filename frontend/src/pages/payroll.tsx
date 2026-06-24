@@ -272,7 +272,7 @@ export default function Payroll() {
           <div className="space-y-6">
             <div className="text-center border-b border-border/50 pb-4">
               <h3 className="text-xl font-bold text-primary">
-                {payslip.company?.name || "Toyo Kambocha"}
+                {payslip.company?.name || "Flowmative"}
               </h3>
               <p className="text-sm text-muted-foreground">
                 Payslip for {months[(payslip.payroll?.month || 1) - 1]}{" "}

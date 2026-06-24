@@ -195,7 +195,7 @@ router.get("/:id/payslip", async (req, res) => {
           }
         : null,
       company: {
-        name: branding[0]?.companyName || "Toyo Kambocha",
+        name: branding[0]?.companyName || "Flowmative",
         logo: branding[0]?.logoUrl || null,
       },
     });

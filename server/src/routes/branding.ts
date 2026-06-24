@@ -12,7 +12,7 @@ router.get("/", async (req, res) => {
       const [created] = await db
         .insert(brandingTable)
         .values({
-          companyName: "Toyo Kambocha",
+          companyName: "Flowmative",
           primaryColor: "#1e40af",
           accentColor: "#d97706",
           theme: "light",
@@ -42,7 +42,7 @@ router.put("/", async (req, res) => {
       const [created] = await db
         .insert(brandingTable)
         .values({
-          companyName: companyName || "Toyo Kambocha",
+          companyName: companyName || "Flowmative",
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || "#1e40af",
           accentColor: accentColor || "#d97706",

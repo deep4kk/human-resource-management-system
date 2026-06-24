@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 
 export const brandingTable = pgTable("branding", {
   id: serial("id").primaryKey(),
-  companyName: text("company_name").notNull().default("Toyo Kambocha"),
+  companyName: text("company_name").notNull().default("Flowmative"),
   logoUrl: text("logo_url"),
   primaryColor: text("primary_color").notNull().default("#1e40af"),
   accentColor: text("accent_color").notNull().default("#d97706"),

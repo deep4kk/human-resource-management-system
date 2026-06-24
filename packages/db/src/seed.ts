@@ -13,9 +13,11 @@ import { departmentsTable } from "./schema/departments.js";
 import { brandingTable } from "./schema/branding.js";
 import { eq } from "drizzle-orm";
 
+const SALT = "hrms_salt_flowmative";
+
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
+  const data = encoder.encode(password + SALT);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -57,7 +59,7 @@ async function seed() {
         employeeCode: "EMP001",
         firstName: "Raj",
         lastName: "Kumar",
-        email: "admin@toyo-kambocha.com",
+        email: "admin@flowmative.com",
         phone: "+91 98765 43210",
         departmentId: deptResults[0].id,
         designation: "Software Engineer",
@@ -73,7 +75,7 @@ async function seed() {
         employeeCode: "EMP002",
         firstName: "Priya",
         lastName: "Sharma",
-        email: "hr@toyo-kambocha.com",
+        email: "hr@flowmative.com",
         phone: "+91 98765 43211",
         departmentId: deptResults[1].id,
         designation: "HR Manager",
@@ -89,7 +91,7 @@ async function seed() {
         employeeCode: "EMP003",
         firstName: "Amit",
         lastName: "Singh",
-        email: "employee@toyo-kambocha.com",
+        email: "employee@flowmative.com",
         phone: "+91 98765 43212",
         departmentId: deptResults[0].id,
         designation: "Senior Developer",
@@ -105,7 +107,7 @@ async function seed() {
         employeeCode: "EMP004",
         firstName: "Sneha",
         lastName: "Patel",
-        email: "manager@toyo-kambocha.com",
+        email: "manager@flowmative.com",
         phone: "+91 98765 43213",
         departmentId: deptResults[0].id,
         designation: "Engineering Manager",
@@ -121,7 +123,7 @@ async function seed() {
         employeeCode: "EMP005",
         firstName: "Vikram",
         lastName: "Reddy",
-        email: "vikram@toyo-kambocha.com",
+        email: "vikram@flowmative.com",
         phone: "+91 98765 43214",
         departmentId: deptResults[2].id,
         designation: "Marketing Lead",
@@ -145,7 +147,7 @@ async function seed() {
     console.log("🔐 Creating users...");
     const users = [
       {
-        email: "admin@toyo-kambocha.com",
+        email: "admin@flowmative.com",
         passwordHash: await hashPassword("admin123"),
         name: "Raj Kumar",
         role: "admin",
@@ -153,7 +155,7 @@ async function seed() {
         isActive: true,
       },
       {
-        email: "hr@toyo-kambocha.com",
+        email: "hr@flowmative.com",
         passwordHash: await hashPassword("hr123"),
         name: "Priya Sharma",
         role: "hr",
@@ -161,7 +163,7 @@ async function seed() {
         isActive: true,
       },
       {
-        email: "employee@toyo-kambocha.com",
+        email: "employee@flowmative.com",
         passwordHash: await hashPassword("emp123"),
         name: "Amit Singh",
         role: "employee",
@@ -169,7 +171,7 @@ async function seed() {
         isActive: true,
       },
       {
-        email: "manager@toyo-kambocha.com",
+        email: "manager@flowmative.com",
         passwordHash: await hashPassword("mgr123"),
         name: "Sneha Patel",
         role: "manager",
@@ -184,7 +186,7 @@ async function seed() {
     // Create default branding
     console.log("🎨 Creating default branding...");
     await db.insert(brandingTable).values({
-      companyName: "Toyo Kambocha HRMS",
+      companyName: "Flowmative HRMS",
       logoUrl: null,
       primaryColor: "#6366f1",
       accentColor: "#8b5cf6",
@@ -197,10 +199,10 @@ async function seed() {
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log("   Demo Accounts:");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("   Admin    │ admin@toyo-kambocha.com    │ admin123");
-    console.log("   HR       │ hr@toyo-kambocha.com       │ hr123");
-    console.log("   Employee │ employee@toyo-kambocha.com │ emp123");
-    console.log("   Manager  │ manager@toyo-kambocha.com │ mgr123");
+    console.log("   Admin    │ admin@flowmative.com    │ admin123");
+    console.log("   HR       │ hr@flowmative.com       │ hr123");
+    console.log("   Employee │ employee@flowmative.com │ emp123");
+    console.log("   Manager  │ manager@flowmative.com │ mgr123");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   } catch (error) {
     console.error("❌ Seed failed:", error);

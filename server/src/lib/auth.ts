@@ -4,7 +4,7 @@ import crypto from "crypto";
 export function hashPassword(password: string): string {
   return crypto
     .createHash("sha256")
-    .update(password + "hrms_salt_toyo")
+    .update(password + "hrms_salt_flowmative")
     .digest("hex");
 }
 
@@ -16,7 +16,7 @@ export function generateToken(userId: number, role: string): string {
   const payload = { userId, role, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
   const data = JSON.stringify(payload);
   const signature = crypto
-    .createHmac("sha256", "hrms_jwt_secret_toyo_kambocha")
+    .createHmac("sha256", "hrms_jwt_secret_flowmative")
     .update(data)
     .digest("hex");
   return Buffer.from(data).toString("base64") + "." + signature;
@@ -30,7 +30,7 @@ export function verifyToken(
     if (!dataB64 || !signature) return null;
     const data = Buffer.from(dataB64, "base64").toString();
     const expectedSig = crypto
-      .createHmac("sha256", "hrms_jwt_secret_toyo_kambocha")
+      .createHmac("sha256", "hrms_jwt_secret_flowmative")
       .update(data)
       .digest("hex");
     if (signature !== expectedSig) return null;

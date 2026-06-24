@@ -6,7 +6,7 @@ This guide helps you deploy HRMS alongside your existing apps (like `purchase-bi
 
 - SSH access to `ubuntu@ip-172-31-39-147`
 - Existing apps in `~/apps/`
-- Node.js 20+ installed
+- Node.js 22+ installed (uses `--env-file` flag)
 - pnpm installed (`npm install -g pnpm`)
 - PostgreSQL database (can use local or cloud like Supabase)
 
@@ -53,7 +53,7 @@ DATABASE_URL=postgresql://user:password@host:5432/hrms
 JWT_SECRET=your-super-secret-jwt-key-at-least-32-characters-long
 
 # Server Configuration
-PORT=3000
+PORT=5001
 NODE_ENV=production
 CORS_ORIGINS=https://your-domain.com
 ```
@@ -343,7 +343,7 @@ After seeding the database:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@toyo-kambocha.com | admin123 |
-| HR | hr@toyo-kambocha.com | hr123 |
-| Employee | employee@toyo-kambocha.com | emp123 |
-| Manager | manager@toyo-kambocha.com | mgr123 |
+| Admin | admin@flowmative.com | admin123 |
+| HR | hr@flowmative.com | hr123 |
+| Employee | employee@flowmative.com | emp123 |
+| Manager | manager@flowmative.com | mgr123 |

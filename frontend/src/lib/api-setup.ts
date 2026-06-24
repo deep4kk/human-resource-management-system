@@ -1,4 +1,6 @@
-import { setAuthTokenGetter } from "@hrms/api-client";
+import { setAuthTokenGetter, setBaseUrl } from "@hrms/api-client";
+
+setBaseUrl(import.meta.env.VITE_API_URL ?? "");
 
 // Register auth token getter for all API calls
 setAuthTokenGetter(() => localStorage.getItem("hrms_token"));

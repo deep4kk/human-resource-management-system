@@ -1,12 +1,16 @@
 # Local Development Guide
 
-This guide helps you set up and run the Toyo Kambocha HRMS application on your local machine.
+This guide helps you set up and run the Flowmative HRMS application on your local machine.
 
 ## Prerequisites
 
-- **Node.js** 18+ (recommended: 20.x or 24.x)
-- **pnpm** package manager
+- **Node.js** 22+ (uses `--env-file` flag; requires `node --version` ≥ 22)
+- **pnpm** package manager (install: `npm install -g pnpm`)
 - **PostgreSQL** 14+ (local installation OR cloud provider)
+- **Platform:** Windows (PowerShell), macOS, or Linux
+
+> **Windows users:** Use **PowerShell** (not Command Prompt).  
+> The preinstall script is cross-platform (Node.js inline, no `sh` dependency).
 
 ---
 
@@ -20,14 +24,20 @@ cd human-resource-management-system
 pnpm install
 ```
 
+> If `pnpm install` fails with a shell-related error on Windows, run  
+> `git checkout -- package.json` to restore the preinstall script, then  
+> `pnpm install` again — the script is now cross-platform.
+
 ### 2. Set Up Database
 
-You have two options:
+#### Local PostgreSQL
 
-#### Option A: Local PostgreSQL
+1. Install PostgreSQL and ensure the service is running:
+   - **Windows:** `net start postgresql-x64-18` (or your version)
+   - **macOS:** `brew services start postgresql`
+   - **Linux:** `sudo systemctl start postgresql`
 
-1. Install PostgreSQL on your machine
-2. Create a database:
+2. Create the database:
 
 ```bash
 psql -U postgres
@@ -35,15 +45,16 @@ CREATE DATABASE hrms;
 \q
 ```
 
-#### Option B: Cloud PostgreSQL (Recommended for Beginners)
+> **Windows:** Add `C:\Program Files\PostgreSQL\18\bin` to your `PATH` or use the full path to `psql`.
 
-1. Create a free account at [Supabase](https://supabase.com) or [Neon](https://neon.tech)
-2. Create a new project
-3. Copy the connection string (it looks like: `postgresql://user:password@host:5432/dbname`)
+#### Cloud PostgreSQL
+
+1. Create a free account at [Supabase](https://supabase.com), [Neon](https://neon.tech), or [Aiven](https://aiven.io)
+2. Create a new project and copy the connection string
 
 ### 3. Configure Environment
 
-Create the backend `.env` file:
+**Backend `.env`:**
 
 ```bash
 cp server/.env.example server/.env
@@ -51,14 +62,14 @@ cp server/.env.example server/.env
 
 Edit `server/.env`:
 ```env
-DATABASE_URL=postgresql://your-user:your-password@localhost:5432/hrms
-JWT_SECRET=your-super-secret-key-at-least-32-characters-long
-PORT=3000
+DATABASE_URL=postgresql://postgres:your-password@localhost:5432/hrms
+JWT_SECRET=change-this-to-a-secure-random-string-at-least-32-chars
+PORT=5001
 NODE_ENV=development
-CORS_ORIGINS=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173,http://localhost:3001
 ```
 
-Create the frontend `.env` file:
+**Frontend `.env`:**
 
 ```bash
 cp frontend/.env.example frontend/.env
@@ -66,47 +77,62 @@ cp frontend/.env.example frontend/.env
 
 Edit `frontend/.env`:
 ```env
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:5001
+PORT=3001
 BASE_PATH=/
 ```
 
-### 4. Initialize Database Schema
+> The frontend dev server proxies all `/api` requests to `http://localhost:5001`  
+> via Vite's built-in proxy (`frontend/vite.config.ts`). This avoids CORS issues in  
+> development. The `VITE_API_URL` is used as a fallback for production builds.
 
-Push the database schema:
+### 4. Initialize Database Schema
 
 ```bash
 cd server
 pnpm run db:push
 ```
 
-### 5. Seed Demo Data
+> ⚠️ Always run `db:*` commands from the `server/` directory, not the root.  
+> The scripts delegate to `@hrms/db` via `pnpm --filter @hrms/db`.
 
-Run the seed script to create demo users and sample data:
+### 5. Seed Demo Data
 
 ```bash
 cd server
 pnpm run db:seed
 ```
 
+> The seed creates 4 demo users, 5 employees, 5 departments, and 1 branding  
+> record. The password hashes use `SHA256(password + "hrms_salt_flowmative")`  
+> which must match the same salt in `server/src/lib/auth.ts` — both use it.
+
 ### 6. Start Development Servers
 
-In one terminal, start the backend:
+Open **two separate terminal windows** and keep them running:
+
+**Terminal 1 — Backend (API server on port 5001):**
 ```bash
 cd server
 pnpm run dev
 ```
+This builds the TypeScript code with esbuild, then starts the Node.js server.  
+It reads settings from `server/.env` via the `--env-file` flag (Node 22+).
 
-In another terminal, start the frontend:
+**Terminal 2 — Frontend (Vite dev server on port 3001):**
 ```bash
 cd frontend
 pnpm run dev
 ```
+Vite starts with hot-reload and proxies `/api/*` requests to the backend.
+
+> Both terminals must stay open. Press **Ctrl+C** to stop either one.
 
 ### 7. Access the Application
 
-- **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:3000
-- **Health Check:** http://localhost:3000/health
+- **Frontend:** http://localhost:3001
+- **Backend API:** http://localhost:5001
+- **Health Check:** http://localhost:5001/health
 
 ---
 
@@ -116,10 +142,10 @@ After seeding, you can log in with these accounts:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@toyo-kambocha.com | admin123 |
-| HR Manager | hr@toyo-kambocha.com | hr123 |
-| Employee | employee@toyo-kambocha.com | emp123 |
-| Manager | manager@toyo-kambocha.com | mgr123 |
+| Admin | admin@flowmative.com | admin123 |
+| HR Manager | hr@flowmative.com | hr123 |
+| Employee | employee@flowmative.com | emp123 |
+| Manager | manager@flowmative.com | mgr123 |
 
 ---
 
@@ -204,6 +230,24 @@ pnpm run db:check
 
 ## Troubleshooting
 
+### Server starts but returns 401 on login
+
+This usually means the password hashes in the database don't match what the server expects.
+
+```bash
+# 1. Clear old data
+psql -U postgres -d hrms -c "TRUNCATE TABLE users, employees, departments, branding RESTART IDENTITY CASCADE;"
+
+# 2. Re-seed (from server directory)
+cd server
+pnpm run db:seed
+
+# 3. Restart the server (Ctrl+C then pnpm run dev again)
+```
+
+Both seed and server auth must use the same salt: `"hrms_salt_flowmative"`.  
+If you changed the salt in `server/src/lib/auth.ts`, update the seed at `packages/db/src/seed.ts` too.
+
 ### "DATABASE_URL must be set"
 
 Make sure you created the `.env` file in `server/`:
@@ -213,18 +257,44 @@ cp server/.env.example server/.env
 # Then edit it with your database URL
 ```
 
-### "Port already in use"
+### Server exits immediately after "Server listening"
 
-Change the port in `.env`:
+On Windows this can happen if the Node.js process encounters an unhandled error.  
+Start the server manually to see the full error:
 
-```env
-PORT=3001
+```bash
+cd server
+node --env-file=.env --enable-source-maps ./dist/index.mjs
 ```
 
-And update the frontend `.env`:
+If the issue repeats, rebuild first:
+
+```bash
+cd server
+pnpm run build
+pnpm run start
+```
+
+### "Port already in use"
+
+Another process is using port 3001 or 5001. Find and kill it:
+
+```powershell
+# PowerShell
+netstat -ano | Select-String ":3001 "
+Stop-Process -Id <PID> -Force
+```
+
+Or change the ports in `.env`:
 
 ```env
-VITE_API_URL=http://localhost:3001
+PORT=5001        # server port
+```
+
+And `frontend/.env`:
+
+```env
+PORT=3001        # frontend port
 ```
 
 ### Database connection refused
@@ -232,23 +302,48 @@ VITE_API_URL=http://localhost:3001
 1. Make sure PostgreSQL is running:
    - macOS: `brew services start postgresql`
    - Linux: `sudo systemctl start postgresql`
-   - Windows: Start the PostgreSQL service
+   - Windows: `net start postgresql-x64-18` (adjust version)
 
-2. Check your connection string format:
+2. Check your connection string in `server/.env`:
    ```
-   postgresql://username:password@localhost:5432/database_name
+   DATABASE_URL=postgresql://postgres:your-password@localhost:5432/hrms
    ```
 
 ### "Cannot find module"
 
-Run `pnpm install` to ensure all dependencies are installed.
+Run `pnpm install` from the project root. If native binaries fail on Windows,  
+the `pnpm-workspace.yaml` `overrides` section was updated to allow `win32-x64`  
+builds — ensure you have the latest version of that file.
 
-### Node version issues
+### Node version too old
 
-Use Node.js 18+:
+Requires Node.js 22+ (uses `--env-file` flag). Check your version:
+
 ```bash
-node --version  # Should be 18.x or higher
+node --version  # Must be 22.x or higher
 ```
+
+### pnpm preinstall script fails
+
+The root `package.json` has a cross-platform preinstall script that checks  
+for `pnpm` and cleans up lock files. If it still fails on Windows, run:
+
+```bash
+pnpm install --ignore-scripts
+```
+
+### Frontend API calls return 404
+
+The Vite dev server proxies `/api` requests to the backend. If you see 404,  
+the backend may not be running. Open a second terminal and start it:
+
+```bash
+cd server
+pnpm run dev
+```
+
+If you disabled the proxy or need to test without it, ensure  
+`VITE_API_URL=http://localhost:5001` in `frontend/.env`.
 
 ---
 
@@ -256,12 +351,13 @@ node --version  # Should be 18.x or higher
 
 1. **Start developing:**
    ```bash
-   pnpm run dev  # Runs both frontend and backend concurrently
+   # Run backend (in terminal 1): cd server && pnpm run dev
+   # Run frontend (in terminal 2): cd frontend && pnpm run dev
    ```
 
 2. **Make changes** to source files
 
-3. **Test your changes** at http://localhost:5173
+3. **Test your changes** at http://localhost:3001
 
 4. **Check types:**
    ```bash
@@ -278,7 +374,7 @@ node --version  # Should be 18.x or higher
 
 ## Database Schema
 
-The application uses Drizzle ORM with PostgreSQL. Schema files are in `lib/db/src/schema/`:
+The application uses Drizzle ORM with PostgreSQL. Schema files are in `packages/db/src/schema/`:
 
 - `users.ts` - User accounts with roles
 - `employees.ts` - Employee records
@@ -294,7 +390,7 @@ The application uses Drizzle ORM with PostgreSQL. Schema files are in `lib/db/sr
 
 ## API Documentation
 
-The API runs at `http://localhost:3000/api/`:
+The API runs at `http://localhost:5001/api/`:
 
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Get current user
