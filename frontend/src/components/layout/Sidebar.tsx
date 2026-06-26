@@ -16,6 +16,7 @@ import {
   Fingerprint,
   Shield,
   X,
+  Settings2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -87,6 +88,30 @@ const menuItems = [
     label: "Policies",
     icon: Shield,
     roles: ["admin", "hr", "manager", "employee"],
+  },
+  {
+    path: "/leave-rules",
+    label: "Attendance Rules",
+    icon: Settings2,
+    roles: ["admin", "hr"],
+  },
+  {
+    path: "/roles",
+    label: "Roles & Permissions",
+    icon: Shield,
+    roles: ["admin"],
+  },
+  {
+    path: "/audit-logs",
+    label: "Audit Logs",
+    icon: FileText,
+    roles: ["admin", "hr"],
+  },
+  {
+    path: "/export-import",
+    label: "Export / Import",
+    icon: FileText,
+    roles: ["admin", "hr"],
   },
 ];
 

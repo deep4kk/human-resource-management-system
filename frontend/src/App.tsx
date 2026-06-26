@@ -18,6 +18,13 @@ import Announcements from "@/pages/announcements";
 import Policies from "@/pages/policies";
 import BrandingSettings from "@/pages/settings/branding";
 import BiometricsSettings from "@/pages/settings/biometrics";
+import LeaveRules from "@/pages/leave-rules";
+import Admin from "@/pages/admin";
+import RolesPage from "@/pages/roles";
+import AuditLogs from "@/pages/audit-logs";
+import ExportImport from "@/pages/export-import";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +35,6 @@ function BrandingWrapper({ children }: { children: React.ReactNode }) {
 
 const ProtectedRoute = ({ component: Component }: { component: any }) => {
   const { isAuthenticated, isLoading } = useAuth();
-
   if (isLoading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -36,7 +42,6 @@ const ProtectedRoute = ({ component: Component }: { component: any }) => {
       </div>
     );
   if (!isAuthenticated) return <Redirect to="/login" />;
-
   return (
     <AppLayout>
       <Component />
@@ -48,72 +53,35 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/admin" component={Admin} />
 
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
-      <Route
-        path="/dashboard"
-        component={() => <ProtectedRoute component={Dashboard} />}
-      />
-      <Route
-        path="/employees"
-        component={() => <ProtectedRoute component={Employees} />}
-      />
-      <Route
-        path="/attendance"
-        component={() => <ProtectedRoute component={Attendance} />}
-      />
-      <Route
-        path="/leaves"
-        component={() => <ProtectedRoute component={Leaves} />}
-      />
-      <Route
-        path="/payroll"
-        component={() => <ProtectedRoute component={Payroll} />}
-      />
-      <Route
-        path="/timesheets"
-        component={() => <ProtectedRoute component={Timesheets} />}
-      />
-      <Route
-        path="/performance"
-        component={() => <ProtectedRoute component={Performance} />}
-      />
-      <Route
-        path="/documents"
-        component={() => <ProtectedRoute component={Documents} />}
-      />
-      <Route
-        path="/holidays"
-        component={() => <ProtectedRoute component={Holidays} />}
-      />
-      <Route
-        path="/announcements"
-        component={() => <ProtectedRoute component={Announcements} />}
-      />
-      <Route
-        path="/policies"
-        component={() => <ProtectedRoute component={Policies} />}
-      />
-      <Route
-        path="/settings/branding"
-        component={() => <ProtectedRoute component={BrandingSettings} />}
-      />
-      <Route
-        path="/settings/biometrics"
-        component={() => <ProtectedRoute component={BiometricsSettings} />}
-      />
+      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path="/employees" component={() => <ProtectedRoute component={Employees} />} />
+      <Route path="/attendance" component={() => <ProtectedRoute component={Attendance} />} />
+      <Route path="/leaves" component={() => <ProtectedRoute component={Leaves} />} />
+      <Route path="/payroll" component={() => <ProtectedRoute component={Payroll} />} />
+      <Route path="/timesheets" component={() => <ProtectedRoute component={Timesheets} />} />
+      <Route path="/performance" component={() => <ProtectedRoute component={Performance} />} />
+      <Route path="/documents" component={() => <ProtectedRoute component={Documents} />} />
+      <Route path="/holidays" component={() => <ProtectedRoute component={Holidays} />} />
+      <Route path="/announcements" component={() => <ProtectedRoute component={Announcements} />} />
+      <Route path="/policies" component={() => <ProtectedRoute component={Policies} />} />
+      <Route path="/leave-rules" component={() => <ProtectedRoute component={LeaveRules} />} />
+      <Route path="/roles" component={() => <ProtectedRoute component={RolesPage} />} />
+      <Route path="/audit-logs" component={() => <ProtectedRoute component={AuditLogs} />} />
+      <Route path="/export-import" component={() => <ProtectedRoute component={ExportImport} />} />
+      <Route path="/settings/branding" component={() => <ProtectedRoute component={BrandingSettings} />} />
+      <Route path="/settings/biometrics" component={() => <ProtectedRoute component={BiometricsSettings} />} />
 
       <Route path="*">
         {() => (
           <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
             <h1 className="text-6xl font-bold text-primary mb-4">404</h1>
             <p className="text-xl text-muted-foreground mb-8">Page not found</p>
-            <a
-              href="/"
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl"
-            >
-              Go Home
-            </a>
+            <a href="/" className="px-6 py-3 bg-primary text-primary-foreground rounded-xl">Go Home</a>
           </div>
         )}
       </Route>

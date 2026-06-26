@@ -5,30 +5,44 @@ import express, {
   type NextFunction,
 } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
+import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// Get allowed origins from environment variable
 const corsOrigins =
   process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) || [];
 
-// Security headers middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  next();
+// Security headers (replaces manual headers)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too Many Requests", message: "Too many attempts, try again later" },
 });
+
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/signup", authLimiter);
+
+// Cookie parser
+app.use(cookieParser());
 
 // Request body size limit
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// CORS configuration with allowed origins
+// CORS
 app.use(
   cors({
     origin: corsOrigins.length > 0 ? corsOrigins : false,
@@ -38,7 +52,7 @@ app.use(
   }),
 );
 
-// Logging middleware
+// Logging
 app.use(
   pinoHttp({
     logger,
@@ -59,12 +73,11 @@ app.use(
   }),
 );
 
-// Health check endpoint
+// Health check
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-// Readiness check endpoint
 app.get("/ready", (_req: Request, res: Response) => {
   res.json({ status: "ready", timestamp: new Date().toISOString() });
 });
@@ -72,12 +85,18 @@ app.get("/ready", (_req: Request, res: Response) => {
 // API routes
 app.use("/api", router);
 
+// 404 handler
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: "Not Found", message: "Route not found" });
+});
+
 // Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, "Unhandled error");
-  res.status(500).json({
-    error: "Internal Server Error",
-    message: process.env.NODE_ENV === "development" ? err.message : undefined,
+  const statusCode = (err as any).statusCode || 500;
+  res.status(statusCode).json({
+    error: statusCode === 500 ? "Internal Server Error" : err.name,
+    message: process.env.NODE_ENV === "development" ? err.message : "An unexpected error occurred",
   });
 });
 

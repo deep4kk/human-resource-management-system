@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { db } from "@hrms/db";
-import { leaveRequestsTable, employeesTable } from "@hrms/db/schema";
-import { eq, and } from "drizzle-orm";
+import { LeaveRequest, Employee } from "@hrms/db";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -9,45 +7,28 @@ router.use(requireAuth);
 
 router.get("/", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const { employeeId, status } = req.query;
-    const conditions: any[] = [];
-    if (employeeId)
-      conditions.push(eq(leaveRequestsTable.employeeId, Number(employeeId)));
-    if (status)
-      conditions.push(eq(leaveRequestsTable.status, status as string));
+    const filter: any = { companyId };
+    if (employeeId) filter.employeeId = employeeId;
+    if (status) filter.status = status;
 
-    const leaves = await db
-      .select({
-        id: leaveRequestsTable.id,
-        employeeId: leaveRequestsTable.employeeId,
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-        leaveType: leaveRequestsTable.leaveType,
-        startDate: leaveRequestsTable.startDate,
-        endDate: leaveRequestsTable.endDate,
-        days: leaveRequestsTable.days,
-        reason: leaveRequestsTable.reason,
-        status: leaveRequestsTable.status,
-        approvedBy: leaveRequestsTable.approvedBy,
-        createdAt: leaveRequestsTable.createdAt,
-      })
-      .from(leaveRequestsTable)
-      .leftJoin(
-        employeesTable,
-        eq(leaveRequestsTable.employeeId, employeesTable.id),
-      )
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(leaveRequestsTable.createdAt);
+    const leaves = await LeaveRequest.find(filter).populate("employeeId", "firstName lastName").sort({ createdAt: -1 });
 
-    res.json(
-      leaves.map((l) => ({
-        ...l,
-        employeeName: `${l.firstName || ""} ${l.lastName || ""}`.trim(),
-        days: Number(l.days),
-        approvedByName: null,
-        createdAt: l.createdAt.toISOString(),
-      })),
-    );
+    res.json(leaves.map((l) => ({
+      id: l._id,
+      employeeId: l.employeeId?._id,
+      employeeName: (l.employeeId as any) ? `${(l.employeeId as any).firstName} ${(l.employeeId as any).lastName}` : "",
+      leaveType: l.leaveType,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      days: l.days,
+      reason: l.reason,
+      status: l.status,
+      approvedBy: l.approvedBy,
+      approvedByName: null,
+      createdAt: l.createdAt!.toISOString(),
+    })));
   } catch (err) {
     req.log.error({ err }, "List leaves error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -56,41 +37,16 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const { employeeId, leaveType, startDate, endDate, reason } = req.body;
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const days =
-      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const [leave] = await db
-      .insert(leaveRequestsTable)
-      .values({
-        employeeId,
-        leaveType,
-        startDate,
-        endDate,
-        days: String(days),
-        reason,
-        status: "pending",
-      })
-      .returning();
+    const leave = await LeaveRequest.create({ employeeId, leaveType, startDate, endDate, days, reason, status: "pending", companyId });
+    const emp = await Employee.findById(employeeId, "firstName lastName");
 
-    const emp = await db
-      .select({
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-      })
-      .from(employeesTable)
-      .where(eq(employeesTable.id, employeeId))
-      .limit(1);
-
-    res.status(201).json({
-      ...leave,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      days: Number(leave.days),
-      approvedByName: null,
-      createdAt: leave.createdAt.toISOString(),
-    });
+    res.status(201).json({ id: leave._id, employeeId: leave.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", leaveType: leave.leaveType, startDate: leave.startDate, endDate: leave.endDate, days: leave.days, reason: leave.reason, status: leave.status, approvedBy: null, approvedByName: null, createdAt: leave.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Apply leave error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -99,34 +55,12 @@ router.post("/", async (req, res) => {
 
 router.put("/:id/status", async (req, res) => {
   try {
-    const id = Number(req.params.id);
     const { status, approvedBy } = req.body;
-    const [updated] = await db
-      .update(leaveRequestsTable)
-      .set({ status, approvedBy: approvedBy || null, updatedAt: new Date() })
-      .where(eq(leaveRequestsTable.id, id))
-      .returning();
-    if (!updated) {
-      res.status(404).json({ error: "Not Found" });
-      return;
-    }
+    const updated = await LeaveRequest.findByIdAndUpdate(req.params.id, { $set: { status, approvedBy: approvedBy || null } }, { new: true });
+    if (!updated) { res.status(404).json({ error: "Not Found" }); return; }
 
-    const emp = await db
-      .select({
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-      })
-      .from(employeesTable)
-      .where(eq(employeesTable.id, updated.employeeId))
-      .limit(1);
-
-    res.json({
-      ...updated,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      days: Number(updated.days),
-      approvedByName: null,
-      createdAt: updated.createdAt.toISOString(),
-    });
+    const emp = await Employee.findById(updated.employeeId, "firstName lastName");
+    res.json({ id: updated._id, employeeId: updated.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", leaveType: updated.leaveType, startDate: updated.startDate, endDate: updated.endDate, days: updated.days, reason: updated.reason, status: updated.status, approvedBy: updated.approvedBy, approvedByName: null, createdAt: updated.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Update leave status error");
     res.status(500).json({ error: "Internal Server Error" });

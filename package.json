@@ -6,11 +6,18 @@
     "preinstall": "node -e \"var fs=require('fs');['package-lock.json','yarn.lock'].forEach(f=>{try{fs.unlinkSync(f)}catch(e){}});if(!/pnpm/.test(process.env.npm_config_user_agent||'')){console.error('Use pnpm instead');process.exit(1)}\"",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm -r --filter \"./server\" --filter \"./frontend\" --if-present run typecheck"
+    "typecheck": "pnpm -r --filter \"./server\" --filter \"./frontend\" --if-present run typecheck",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,css,md}\""
   },
   "private": true,
   "devDependencies": {
     "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "eslint": "^9.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0"
   }
 }

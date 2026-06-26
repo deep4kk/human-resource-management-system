@@ -15,11 +15,19 @@ import documentsRouter from "./documents.js";
 import holidaysRouter from "./holidays.js";
 import announcementsRouter from "./announcements.js";
 import policiesRouter from "./policies.js";
+import leaveRulesRouter from "./leave-rules.js";
+import adminRouter from "./admin.js";
+import passwordResetRouter from "./password-reset.js";
+import uploadRouter from "./upload.js";
+import auditLogsRouter from "./audit-logs.js";
+import rolesRouter from "./roles.js";
+import exportImportRouter from "./export-import.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+router.use("/auth", passwordResetRouter);
 router.use("/employees", employeesRouter);
 router.use("/departments", departmentsRouter);
 router.use("/attendance", attendanceRouter);
@@ -34,5 +42,11 @@ router.use("/documents", documentsRouter);
 router.use("/holidays", holidaysRouter);
 router.use("/announcements", announcementsRouter);
 router.use("/policies", policiesRouter);
+router.use("/leave-rules", leaveRulesRouter);
+router.use("/admin", adminRouter);
+router.use("/upload", uploadRouter);
+router.use("/audit-logs", auditLogsRouter);
+router.use("/roles", rolesRouter);
+router.use("/export", exportImportRouter);
 
 export default router;

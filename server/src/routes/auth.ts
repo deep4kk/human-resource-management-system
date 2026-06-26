@@ -1,53 +1,39 @@
 import { Router } from "express";
-import { db } from "@hrms/db";
-import { usersTable } from "@hrms/db/schema";
-import { eq } from "drizzle-orm";
-import {
-  hashPassword,
-  verifyPassword,
-  generateToken,
-  requireAuth,
-} from "../lib/auth.js";
+import { User, Company } from "@hrms/db";
+import { hashPassword, verifyPassword, generateToken, requireAuth, LoginBody, SignupBody } from "../lib/auth.js";
+import { logAudit } from "../lib/audit.js";
 
 const router = Router();
 
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res
-        .status(400)
-        .json({ error: "Bad Request", message: "Email and password required" });
+    const parsed = LoginBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Bad Request", message: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
-    const users = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email))
-      .limit(1);
-    const user = users[0];
-    if (!user || !verifyPassword(password, user.passwordHash)) {
-      res
-        .status(401)
-        .json({ error: "Unauthorized", message: "Invalid credentials" });
+    const { email, password } = parsed.data;
+    const user = await User.findOne({ email });
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
       return;
     }
     if (!user.isActive) {
-      res
-        .status(401)
-        .json({ error: "Unauthorized", message: "Account is inactive" });
+      res.status(401).json({ error: "Unauthorized", message: "Account is inactive" });
       return;
     }
-    const token = generateToken(user.id, user.role);
+    const token = generateToken(user._id.toString(), user.role, user.companyId?.toString());
+
     res.json({
       token,
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         name: user.name,
         role: user.role,
         employeeId: user.employeeId,
         avatar: user.avatar,
+        companyId: user.companyId,
       },
     });
   } catch (err) {
@@ -56,26 +42,57 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/signup", async (req, res) => {
+  try {
+    const parsed = SignupBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Bad Request", message: parsed.error.errors[0]?.message || "Invalid input" });
+      return;
+    }
+    const { companyName, email, password, name } = parsed.data;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(409).json({ error: "Conflict", message: "Email already registered" });
+      return;
+    }
+
+    const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const passwordHash = await hashPassword(password);
+
+    const company = await Company.create({ name: companyName, email, passwordHash, slug });
+    const user = await User.create({ email, passwordHash, name, role: "admin", companyId: company._id, isActive: true });
+    const token = generateToken(user._id.toString(), user.role, company._id.toString());
+
+    (req as any).userName = name;
+    await logAudit(req, "company.signup", "Company", company._id.toString(), { companyName });
+
+    res.status(201).json({
+      token,
+      user: { id: user._id, email: user.email, name: user.name, role: user.role, companyId: company._id },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Signup error");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    const { userId } = (req as any).user;
-    const users = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .limit(1);
-    const user = users[0];
+    const { userId } = req.user!;
+    const user = await User.findById(userId);
     if (!user) {
       res.status(404).json({ error: "Not Found" });
       return;
     }
     res.json({
-      id: user.id,
+      id: user._id,
       email: user.email,
       name: user.name,
       role: user.role,
       employeeId: user.employeeId,
       avatar: user.avatar,
+      companyId: user.companyId,
     });
   } catch (err) {
     req.log.error({ err }, "Get me error");

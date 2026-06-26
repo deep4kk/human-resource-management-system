@@ -1,11 +1,5 @@
 import { Router } from "express";
-import { db } from "@hrms/db";
-import {
-  kpisTable,
-  appraisalsTable,
-  employeesTable,
-} from "@hrms/db/schema";
-import { eq } from "drizzle-orm";
+import { Kpi, Appraisal, Employee } from "@hrms/db";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -13,38 +7,18 @@ router.use(requireAuth);
 
 router.get("/kpis", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const { employeeId } = req.query;
-    const query = db
-      .select({
-        id: kpisTable.id,
-        employeeId: kpisTable.employeeId,
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-        title: kpisTable.title,
-        description: kpisTable.description,
-        target: kpisTable.target,
-        achieved: kpisTable.achieved,
-        unit: kpisTable.unit,
-        period: kpisTable.period,
-        status: kpisTable.status,
-        createdAt: kpisTable.createdAt,
-      })
-      .from(kpisTable)
-      .leftJoin(employeesTable, eq(kpisTable.employeeId, employeesTable.id));
+    const filter: any = { companyId };
+    if (employeeId) filter.employeeId = employeeId;
 
-    const records = employeeId
-      ? await query.where(eq(kpisTable.employeeId, Number(employeeId)))
-      : await query;
-
-    res.json(
-      records.map((r) => ({
-        ...r,
-        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
-        target: Number(r.target),
-        achieved: Number(r.achieved),
-        createdAt: r.createdAt.toISOString(),
-      })),
-    );
+    const records = await Kpi.find(filter).populate("employeeId", "firstName lastName");
+    res.json(records.map((r) => ({
+      id: r._id, employeeId: r.employeeId?._id,
+      employeeName: (r.employeeId as any) ? `${(r.employeeId as any).firstName} ${(r.employeeId as any).lastName}` : "",
+      title: r.title, description: r.description, target: r.target, achieved: r.achieved,
+      unit: r.unit, period: r.period, status: r.status, createdAt: r.createdAt!.toISOString(),
+    })));
   } catch (err) {
     req.log.error({ err }, "List KPIs error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -53,46 +27,11 @@ router.get("/kpis", async (req, res) => {
 
 router.post("/kpis", async (req, res) => {
   try {
-    const {
-      employeeId,
-      title,
-      description,
-      target,
-      achieved,
-      unit,
-      period,
-      status,
-    } = req.body;
-    const [record] = await db
-      .insert(kpisTable)
-      .values({
-        employeeId,
-        title,
-        description: description || null,
-        target: String(target),
-        achieved: String(achieved || 0),
-        unit,
-        period,
-        status: status || "on_track",
-      })
-      .returning();
-
-    const emp = await db
-      .select({
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-      })
-      .from(employeesTable)
-      .where(eq(employeesTable.id, employeeId))
-      .limit(1);
-
-    res.status(201).json({
-      ...record,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      target: Number(record.target),
-      achieved: Number(record.achieved),
-      createdAt: record.createdAt.toISOString(),
-    });
+    const { companyId } = (req as any).user;
+    const { employeeId, title, description, target, achieved, unit, period, status } = req.body;
+    const record = await Kpi.create({ employeeId, title, description: description || null, target, achieved: achieved || 0, unit, period, status: status || "on_track", companyId });
+    const emp = await Employee.findById(employeeId, "firstName lastName");
+    res.status(201).json({ id: record._id, employeeId: record.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", title: record.title, description: record.description, target: record.target, achieved: record.achieved, unit: record.unit, period: record.period, status: record.status, createdAt: record.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Create KPI error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -101,63 +40,27 @@ router.post("/kpis", async (req, res) => {
 
 router.get("/appraisals", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const { employeeId } = req.query;
-    const query = db
-      .select({
-        id: appraisalsTable.id,
-        employeeId: appraisalsTable.employeeId,
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-        reviewerId: appraisalsTable.reviewerId,
-        period: appraisalsTable.period,
-        overallRating: appraisalsTable.overallRating,
-        technicalSkills: appraisalsTable.technicalSkills,
-        communication: appraisalsTable.communication,
-        teamwork: appraisalsTable.teamwork,
-        leadership: appraisalsTable.leadership,
-        comments: appraisalsTable.comments,
-        status: appraisalsTable.status,
-        createdAt: appraisalsTable.createdAt,
-      })
-      .from(appraisalsTable)
-      .leftJoin(
-        employeesTable,
-        eq(appraisalsTable.employeeId, employeesTable.id),
-      );
+    const filter: any = { companyId };
+    if (employeeId) filter.employeeId = employeeId;
 
-    const records = employeeId
-      ? await query.where(eq(appraisalsTable.employeeId, Number(employeeId)))
-      : await query;
+    const records = await Appraisal.find(filter).populate("employeeId", "firstName lastName").populate("reviewerId", "firstName lastName");
 
-    const reviewerIds = [...new Set(records.map((r) => r.reviewerId))];
-    const reviewers: Record<number, string> = {};
-    if (reviewerIds.length > 0) {
-      for (const rid of reviewerIds) {
-        const r = await db
-          .select({
-            firstName: employeesTable.firstName,
-            lastName: employeesTable.lastName,
-          })
-          .from(employeesTable)
-          .where(eq(employeesTable.id, rid))
-          .limit(1);
-        if (r[0]) reviewers[rid] = `${r[0].firstName} ${r[0].lastName}`;
-      }
-    }
-
-    res.json(
-      records.map((r) => ({
-        ...r,
-        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
-        reviewerName: reviewers[r.reviewerId] || "",
-        overallRating: Number(r.overallRating),
-        technicalSkills: Number(r.technicalSkills),
-        communication: Number(r.communication),
-        teamwork: Number(r.teamwork),
-        leadership: Number(r.leadership),
-        createdAt: r.createdAt.toISOString(),
-      })),
-    );
+    res.json(records.map((r) => {
+      const emp = r.employeeId as any;
+      const rev = r.reviewerId as any;
+      return {
+        id: r._id, employeeId: r.employeeId?._id,
+        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "",
+        reviewerId: r.reviewerId?._id,
+        reviewerName: rev ? `${rev.firstName} ${rev.lastName}` : "",
+        period: r.period, overallRating: r.overallRating,
+        technicalSkills: r.technicalSkills, communication: r.communication,
+        teamwork: r.teamwork, leadership: r.leadership, comments: r.comments,
+        status: r.status, createdAt: r.createdAt!.toISOString(),
+      };
+    }));
   } catch (err) {
     req.log.error({ err }, "List appraisals error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -166,63 +69,14 @@ router.get("/appraisals", async (req, res) => {
 
 router.post("/appraisals", async (req, res) => {
   try {
-    const {
-      employeeId,
-      reviewerId,
-      period,
-      overallRating,
-      technicalSkills,
-      communication,
-      teamwork,
-      leadership,
-      comments,
-    } = req.body;
-    const [record] = await db
-      .insert(appraisalsTable)
-      .values({
-        employeeId,
-        reviewerId,
-        period,
-        overallRating: String(overallRating),
-        technicalSkills: String(technicalSkills),
-        communication: String(communication),
-        teamwork: String(teamwork),
-        leadership: String(leadership),
-        comments: comments || null,
-        status: "submitted",
-      })
-      .returning();
-
+    const { companyId } = (req as any).user;
+    const { employeeId, reviewerId, period, overallRating, technicalSkills, communication, teamwork, leadership, comments } = req.body;
+    const record = await Appraisal.create({ employeeId, reviewerId, period, overallRating, technicalSkills, communication, teamwork, leadership, comments: comments || null, status: "submitted", companyId });
     const [emp, rev] = await Promise.all([
-      db
-        .select({
-          firstName: employeesTable.firstName,
-          lastName: employeesTable.lastName,
-        })
-        .from(employeesTable)
-        .where(eq(employeesTable.id, employeeId))
-        .limit(1),
-      db
-        .select({
-          firstName: employeesTable.firstName,
-          lastName: employeesTable.lastName,
-        })
-        .from(employeesTable)
-        .where(eq(employeesTable.id, reviewerId))
-        .limit(1),
+      Employee.findById(employeeId, "firstName lastName"),
+      Employee.findById(reviewerId, "firstName lastName"),
     ]);
-
-    res.status(201).json({
-      ...record,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      reviewerName: rev[0] ? `${rev[0].firstName} ${rev[0].lastName}` : "",
-      overallRating: Number(record.overallRating),
-      technicalSkills: Number(record.technicalSkills),
-      communication: Number(record.communication),
-      teamwork: Number(record.teamwork),
-      leadership: Number(record.leadership),
-      createdAt: record.createdAt.toISOString(),
-    });
+    res.status(201).json({ id: record._id, employeeId: record.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", reviewerId: record.reviewerId, reviewerName: rev ? `${rev.firstName} ${rev.lastName}` : "", period: record.period, overallRating: record.overallRating, technicalSkills: record.technicalSkills, communication: record.communication, teamwork: record.teamwork, leadership: record.leadership, comments: record.comments, status: record.status, createdAt: record.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Create appraisal error");
     res.status(500).json({ error: "Internal Server Error" });

@@ -5,27 +5,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/models/index.ts"
   },
   "scripts": {
-    "generate": "drizzle-kit generate --config ./drizzle.config.ts",
-    "migrate": "drizzle-kit migrate --config ./drizzle.config.ts",
-    "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "check": "drizzle-kit check --config ./drizzle.config.ts",
-    "seed": "node --import tsx src/seed.ts",
-    "studio": "drizzle-kit studio --config ./drizzle.config.ts"
+    "seed": "node --env-file=../../server/.env --import tsx src/seed.ts"
   },
   "dependencies": {
-    "drizzle-orm": "catalog:",
-    "drizzle-zod": "^0.8.3",
-    "pg": "^8.20.0",
-    "zod": "catalog:"
+    "mongoose": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/pg": "^8.18.0",
-    "drizzle-kit": "^0.31.9",
     "tsx": "^4.19.0"
   }
 }

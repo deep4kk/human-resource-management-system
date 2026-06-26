@@ -1,42 +1,50 @@
 import { Request, Response, NextFunction } from "express";
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { z } from "zod";
 
-export function hashPassword(password: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(password + "hrms_salt_flowmative")
-    .digest("hex");
+const SALT_ROUNDS = 12;
+
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    console.error("JWT_SECRET must be at least 32 characters");
+    process.exit(1);
+  }
+  return secret;
 }
 
-export function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
+export interface JwtPayload {
+  userId: string;
+  role: string;
+  companyId?: string;
 }
 
-export function generateToken(userId: number, role: string): string {
-  const payload = { userId, role, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
-  const data = JSON.stringify(payload);
-  const signature = crypto
-    .createHmac("sha256", "hrms_jwt_secret_flowmative")
-    .update(data)
-    .digest("hex");
-  return Buffer.from(data).toString("base64") + "." + signature;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+    }
+  }
 }
 
-export function verifyToken(
-  token: string,
-): { userId: number; role: string } | null {
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+
+export function generateToken(userId: string, role: string, companyId?: string): string {
+  const payload: JwtPayload = { userId, role };
+  if (companyId) payload.companyId = companyId;
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
+}
+
+export function verifyToken(token: string): JwtPayload | null {
   try {
-    const [dataB64, signature] = token.split(".");
-    if (!dataB64 || !signature) return null;
-    const data = Buffer.from(dataB64, "base64").toString();
-    const expectedSig = crypto
-      .createHmac("sha256", "hrms_jwt_secret_flowmative")
-      .update(data)
-      .digest("hex");
-    if (signature !== expectedSig) return null;
-    const payload = JSON.parse(data);
-    if (payload.exp < Date.now()) return null;
-    return { userId: payload.userId, role: payload.role };
+    return jwt.verify(token, getJwtSecret()) as JwtPayload;
   } catch {
     return null;
   }
@@ -51,24 +59,37 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = authHeader.slice(7);
   const payload = verifyToken(token);
   if (!payload) {
-    res
-      .status(401)
-      .json({ error: "Unauthorized", message: "Invalid or expired token" });
+    res.status(401).json({ error: "Unauthorized", message: "Invalid or expired token" });
     return;
   }
-  (req as any).user = payload;
+  req.user = payload;
   next();
 }
 
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const user = (req as any).user;
+    const user = req.user;
     if (!user || !roles.includes(user.role)) {
-      res
-        .status(403)
-        .json({ error: "Forbidden", message: "Insufficient permissions" });
+      res.status(403).json({ error: "Forbidden", message: "Insufficient permissions" });
       return;
     }
     next();
   };
 }
+
+export const LoginBody = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export const SignupBody = z.object({
+  companyName: z.string().min(1).max(100),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+  name: z.string().min(1).max(100),
+});
+
+export const ChangePasswordBody = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});

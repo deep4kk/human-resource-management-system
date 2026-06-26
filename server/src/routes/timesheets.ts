@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { db } from "@hrms/db";
-import { timesheetsTable, employeesTable } from "@hrms/db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { Timesheet, Employee } from "@hrms/db";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -9,46 +7,21 @@ router.use(requireAuth);
 
 router.get("/", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const { employeeId, startDate, endDate, status } = req.query;
-    const conditions: any[] = [];
-    if (employeeId)
-      conditions.push(eq(timesheetsTable.employeeId, Number(employeeId)));
-    if (startDate)
-      conditions.push(gte(timesheetsTable.date, startDate as string));
-    if (endDate) conditions.push(lte(timesheetsTable.date, endDate as string));
-    if (status) conditions.push(eq(timesheetsTable.status, status as string));
+    const filter: any = { companyId };
+    if (employeeId) filter.employeeId = employeeId;
+    if (status) filter.status = status;
+    if (startDate || endDate) { filter.date = {}; if (startDate) filter.date.$gte = startDate; if (endDate) filter.date.$lte = endDate; }
 
-    const records = await db
-      .select({
-        id: timesheetsTable.id,
-        employeeId: timesheetsTable.employeeId,
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-        date: timesheetsTable.date,
-        project: timesheetsTable.project,
-        task: timesheetsTable.task,
-        hours: timesheetsTable.hours,
-        billable: timesheetsTable.billable,
-        description: timesheetsTable.description,
-        status: timesheetsTable.status,
-        createdAt: timesheetsTable.createdAt,
-      })
-      .from(timesheetsTable)
-      .leftJoin(
-        employeesTable,
-        eq(timesheetsTable.employeeId, employeesTable.id),
-      )
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(timesheetsTable.date);
+    const records = await Timesheet.find(filter).populate("employeeId", "firstName lastName").sort({ date: 1 });
 
-    res.json(
-      records.map((r) => ({
-        ...r,
-        employeeName: `${r.firstName || ""} ${r.lastName || ""}`.trim(),
-        hours: Number(r.hours),
-        createdAt: r.createdAt.toISOString(),
-      })),
-    );
+    res.json(records.map((r) => ({
+      id: r._id, employeeId: r.employeeId?._id,
+      employeeName: (r.employeeId as any) ? `${(r.employeeId as any).firstName} ${(r.employeeId as any).lastName}` : "",
+      date: r.date, project: r.project, task: r.task, hours: r.hours, billable: r.billable,
+      description: r.description, status: r.status, createdAt: r.createdAt!.toISOString(),
+    })));
   } catch (err) {
     req.log.error({ err }, "List timesheets error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -57,37 +30,11 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { employeeId, date, project, task, hours, billable, description } =
-      req.body;
-    const [record] = await db
-      .insert(timesheetsTable)
-      .values({
-        employeeId,
-        date,
-        project,
-        task,
-        hours: String(hours),
-        billable: billable ?? true,
-        description: description || null,
-        status: "pending",
-      })
-      .returning();
-
-    const emp = await db
-      .select({
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-      })
-      .from(employeesTable)
-      .where(eq(employeesTable.id, employeeId))
-      .limit(1);
-
-    res.status(201).json({
-      ...record,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      hours: Number(record.hours),
-      createdAt: record.createdAt.toISOString(),
-    });
+    const { companyId } = (req as any).user;
+    const { employeeId, date, project, task, hours, billable, description } = req.body;
+    const record = await Timesheet.create({ employeeId, date, project, task, hours, billable: billable ?? true, description: description || null, status: "pending", companyId });
+    const emp = await Employee.findById(employeeId, "firstName lastName");
+    res.status(201).json({ id: record._id, employeeId: record.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", date: record.date, project: record.project, task: record.task, hours: record.hours, billable: record.billable, description: record.description, status: record.status, createdAt: record.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Create timesheet error");
     res.status(500).json({ error: "Internal Server Error" });
@@ -96,33 +43,11 @@ router.post("/", async (req, res) => {
 
 router.put("/:id/status", async (req, res) => {
   try {
-    const id = Number(req.params.id);
     const { status } = req.body;
-    const [updated] = await db
-      .update(timesheetsTable)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(timesheetsTable.id, id))
-      .returning();
-    if (!updated) {
-      res.status(404).json({ error: "Not Found" });
-      return;
-    }
-
-    const emp = await db
-      .select({
-        firstName: employeesTable.firstName,
-        lastName: employeesTable.lastName,
-      })
-      .from(employeesTable)
-      .where(eq(employeesTable.id, updated.employeeId))
-      .limit(1);
-
-    res.json({
-      ...updated,
-      employeeName: emp[0] ? `${emp[0].firstName} ${emp[0].lastName}` : "",
-      hours: Number(updated.hours),
-      createdAt: updated.createdAt.toISOString(),
-    });
+    const updated = await Timesheet.findByIdAndUpdate(req.params.id, { $set: { status } }, { new: true });
+    if (!updated) { res.status(404).json({ error: "Not Found" }); return; }
+    const emp = await Employee.findById(updated.employeeId, "firstName lastName");
+    res.json({ id: updated._id, employeeId: updated.employeeId, employeeName: emp ? `${emp.firstName} ${emp.lastName}` : "", date: updated.date, project: updated.project, task: updated.task, hours: updated.hours, billable: updated.billable, description: updated.description, status: updated.status, createdAt: updated.createdAt!.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Update timesheet status error");
     res.status(500).json({ error: "Internal Server Error" });

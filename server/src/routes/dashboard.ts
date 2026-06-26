@@ -1,14 +1,5 @@
 import { Router } from "express";
-import { db } from "@hrms/db";
-import {
-  employeesTable,
-  attendanceTable,
-  leaveRequestsTable,
-  payrollTable,
-  timesheetsTable,
-  departmentsTable,
-} from "@hrms/db/schema";
-import { eq, sql, and, gte, lte } from "drizzle-orm";
+import { Employee, Attendance, LeaveRequest, Payroll, Timesheet, Department } from "@hrms/db";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -20,86 +11,34 @@ function getLastDayOfMonth(year: number, month: number): number {
 
 router.get("/stats", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const today = new Date().toISOString().split("T")[0];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-    const [
-      totalEmpResult,
-      activeEmpResult,
-      onLeaveResult,
-      newHiresResult,
-      todayAttResult,
-      pendingLeavesResult,
-      pendingTimesheetsResult,
-      payrollResult,
-      deptResult,
-    ] = await Promise.all([
-      db.select({ count: sql<number>`count(*)` }).from(employeesTable),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(employeesTable)
-        .where(eq(employeesTable.status, "active")),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(employeesTable)
-        .where(eq(employeesTable.status, "on_leave")),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(employeesTable)
-        .where(
-          gte(
-            employeesTable.joinDate,
-            thirtyDaysAgo.toISOString().split("T")[0],
-          ),
-        ),
-      db
-        .select({
-          status: attendanceTable.status,
-          count: sql<number>`count(*)`,
-        })
-        .from(attendanceTable)
-        .where(eq(attendanceTable.date, today))
-        .groupBy(attendanceTable.status),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(leaveRequestsTable)
-        .where(eq(leaveRequestsTable.status, "pending")),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(timesheetsTable)
-        .where(eq(timesheetsTable.status, "pending")),
-      db
-        .select({ total: sql<number>`sum(net_salary)` })
-        .from(payrollTable)
-        .where(
-          and(
-            eq(payrollTable.month, new Date().getMonth() + 1),
-            eq(payrollTable.year, new Date().getFullYear()),
-          ),
-        ),
-      db.select({ count: sql<number>`count(*)` }).from(departmentsTable),
+    const [totalEmployees, activeEmployees, onLeave, newHires, todayAttendance, pendingLeaves, pendingTimesheets, payrollTotal, departments] = await Promise.all([
+      Employee.countDocuments({ companyId }),
+      Employee.countDocuments({ status: "active", companyId }),
+      Employee.countDocuments({ status: "on_leave", companyId }),
+      Employee.countDocuments({ joinDate: { $gte: thirtyDaysAgoStr }, companyId }),
+      Attendance.find({ date: today, companyId }),
+      LeaveRequest.countDocuments({ status: "pending", companyId }),
+      Timesheet.countDocuments({ status: "pending", companyId }),
+      Payroll.aggregate([{ $match: { month: new Date().getMonth() + 1, year: new Date().getFullYear(), companyId } }, { $group: { _id: null, total: { $sum: "$netSalary" } } }]),
+      Department.countDocuments({ companyId }),
     ]);
 
-    const attendanceCounts = todayAttResult.reduce(
-      (acc, r) => {
-        acc[r.status] = Number(r.count);
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const attendanceCounts: Record<string, number> = {};
+    todayAttendance.forEach((r) => { attendanceCounts[r.status] = (attendanceCounts[r.status] || 0) + 1; });
 
     res.json({
-      totalEmployees: Number(totalEmpResult[0]?.count || 0),
-      activeEmployees: Number(activeEmpResult[0]?.count || 0),
-      onLeave: Number(onLeaveResult[0]?.count || 0),
-      newHires: Number(newHiresResult[0]?.count || 0),
+      totalEmployees, activeEmployees, onLeave, newHires,
       presentToday: attendanceCounts["present"] || 0,
       absentToday: attendanceCounts["absent"] || 0,
-      pendingLeaves: Number(pendingLeavesResult[0]?.count || 0),
-      pendingTimesheets: Number(pendingTimesheetsResult[0]?.count || 0),
-      totalPayrollThisMonth: Number(payrollResult[0]?.total || 0),
-      departments: Number(deptResult[0]?.count || 0),
+      pendingLeaves, pendingTimesheets,
+      totalPayrollThisMonth: payrollTotal[0]?.total || 0,
+      departments,
     });
   } catch (err) {
     req.log.error({ err }, "Dashboard stats error");
@@ -109,6 +48,7 @@ router.get("/stats", async (req, res) => {
 
 router.get("/charts", async (req, res) => {
   try {
+    const { companyId } = (req as any).user;
     const attendanceTrend = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -120,48 +60,22 @@ router.get("/charts", async (req, res) => {
       const start = `${y}-${String(m).padStart(2, "0")}-01`;
       const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-      const counts = await db
-        .select({
-          status: attendanceTable.status,
-          count: sql<number>`count(*)`,
-        })
-        .from(attendanceTable)
-        .where(
-          and(gte(attendanceTable.date, start), lte(attendanceTable.date, end)),
-        )
-        .groupBy(attendanceTable.status);
+      const counts = await Attendance.aggregate([
+        { $match: { date: { $gte: start, $lte: end }, companyId } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]);
+      const byStatus: Record<string, number> = {};
+      counts.forEach((c: any) => { byStatus[c._id] = c.count; });
 
-      const byStatus = counts.reduce(
-        (acc, c) => {
-          acc[c.status] = Number(c.count);
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-      attendanceTrend.push({
-        month: monthStr,
-        present: byStatus["present"] || 0,
-        absent: byStatus["absent"] || 0,
-        late: byStatus["late"] || 0,
-      });
+      attendanceTrend.push({ month: monthStr, present: byStatus["present"] || 0, absent: byStatus["absent"] || 0, late: byStatus["late"] || 0 });
     }
 
-    const depts = await db
-      .select({
-        name: departmentsTable.name,
-        count: sql<number>`count(${employeesTable.id})`,
-      })
-      .from(departmentsTable)
-      .leftJoin(
-        employeesTable,
-        eq(employeesTable.departmentId, departmentsTable.id),
-      )
-      .groupBy(departmentsTable.name);
-
-    const departmentDistribution = depts.map((d) => ({
-      department: d.name,
-      count: Number(d.count),
-    }));
+    const deptData = await Department.aggregate([
+      { $match: { companyId } },
+      { $lookup: { from: "employees", localField: "_id", foreignField: "departmentId", as: "emps" } },
+      { $project: { name: 1, count: { $size: "$emps" } } },
+    ]);
+    const departmentDistribution = deptData.map((d: any) => ({ department: d.name, count: d.count }));
 
     const payrollTrend = [];
     for (let i = 5; i >= 0; i--) {
@@ -170,36 +84,14 @@ router.get("/charts", async (req, res) => {
       const m = d.getMonth() + 1;
       const y = d.getFullYear();
       const monthStr = d.toLocaleString("default", { month: "short" });
-
-      const result = await db
-        .select({ total: sql<number>`sum(net_salary)` })
-        .from(payrollTable)
-        .where(and(eq(payrollTable.month, m), eq(payrollTable.year, y)));
-
-      payrollTrend.push({
-        month: monthStr,
-        amount: Number(result[0]?.total || 0),
-      });
+      const result = await Payroll.aggregate([{ $match: { month: m, year: y, companyId } }, { $group: { _id: null, total: { $sum: "$netSalary" } } }]);
+      payrollTrend.push({ month: monthStr, amount: result[0]?.total || 0 });
     }
 
-    const leaves = await db
-      .select({
-        type: leaveRequestsTable.leaveType,
-        count: sql<number>`count(*)`,
-      })
-      .from(leaveRequestsTable)
-      .groupBy(leaveRequestsTable.leaveType);
-    const leaveByType = leaves.map((l) => ({
-      type: l.type,
-      count: Number(l.count),
-    }));
+    const leaveData = await LeaveRequest.aggregate([{ $match: { companyId } }, { $group: { _id: "$leaveType", count: { $sum: 1 } } }]);
+    const leaveByType = leaveData.map((l: any) => ({ type: l._id, count: l.count }));
 
-    res.json({
-      attendanceTrend,
-      departmentDistribution,
-      payrollTrend,
-      leaveByType,
-    });
+    res.json({ attendanceTrend, departmentDistribution, payrollTrend, leaveByType });
   } catch (err) {
     req.log.error({ err }, "Dashboard charts error");
     res.status(500).json({ error: "Internal Server Error" });
